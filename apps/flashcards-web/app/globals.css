@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens ported from the previous frontend's Tailwind config so the
+ * flashcard product reads as an evolution of its established visual
+ * identity rather than a generic Next.js starter. Values are unchanged;
+ * only the token mechanism changed (Tailwind v4's CSS-first @theme instead
+ * of a JS config file).
+ */
+@theme {
+  --color-primary: #ff6b35;
+  --color-primary-dark: #e55a28;
+  --color-primary-light: #ff8f65;
+  --color-secondary: #f7931e;
+  --color-accent: #ffd700;
+
+  --color-surface-dark: #1a1a2e;
+  --color-surface-dark-2: #16213e;
+  --color-text-dark: #2d3748;
+  --color-text-muted: #718096;
+  --color-border: #e2e8f0;
+  --color-bg-light: #f7f9fc;
+  --color-success: #48bb78;
+  --color-danger: #fc8181;
+
+  --font-sans: var(--font-inter), var(--font-nunito), system-ui, sans-serif;
+
+  /* Named so they don't collide with Tailwind's default rounded-lg scale */
+  --radius-card: 12px;
+  --radius-card-lg: 20px;
+
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-card-lg: 0 10px 40px rgba(0, 0, 0, 0.12);
+
+  --animate-fade-up: fade-up 0.6s ease forwards;
+  --animate-fade-in: fade-in 0.4s ease forwards;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-skeleton: skeleton-loading 1.5s infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+:root {
+  --background: var(--color-bg-light);
+  --foreground: var(--color-text-dark);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #eef1f6 25%, #e4e9f1 37%, #eef1f6 63%);
+  background-size: 400% 100%;
+  animation: var(--animate-skeleton);
+}
+
+/*
+ * Flip-card mechanics for study mode. Kept as plain CSS rather than
+ * Tailwind's 3D-transform utilities so the flip is a single well-understood
+ * unit, not a long arbitrary-value class list on the component.
+ */
+.flip-card {
+  perspective: 1500px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-card-face-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card-inner {
+    transition: none;
+  }
+}

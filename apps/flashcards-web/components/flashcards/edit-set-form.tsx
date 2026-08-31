@@ -1,0 +1,116 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardBody } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
+import { api, ApiError } from "@/lib/api-client";
+import type { FlashcardSet, FlashcardSetDetail, SetVisibility } from "@/types/flashcard";
+
+export interface EditSetFormProps {
+  set: FlashcardSetDetail;
+}
+
+// Mirrors CreateSetPage's form fields exactly (title/description/category/
+// visibility) — this was the one CRUD gap the cross-platform audit found:
+// Android and iOS both had a dedicated "edit set details" screen, but the
+// web app's "Edit" button on a set only ever opened the card editor, with
+// no way to change a set's title, description, category, or visibility
+// after creation.
+export function EditSetForm({ set }: EditSetFormProps) {
+  const router = useRouter();
+  const [title, setTitle] = useState(set.title);
+  const [description, setDescription] = useState(set.description ?? "");
+  const [category, setCategory] = useState(set.category ?? "");
+  const [visibility, setVisibility] = useState<SetVisibility>(set.visibility);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.patch<FlashcardSet>(`/flashcard-sets/${set.id}`, {
+        title,
+        description: description || undefined,
+        category: category || undefined,
+        visibility,
+      });
+      router.push(`/sets/${set.id}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardBody>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-dark" htmlFor="title">
+              Title
+            </label>
+            <Input
+              id="title"
+              required
+              maxLength={200}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-dark" htmlFor="description">
+              Description
+            </label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-dark" htmlFor="category">
+              Category <span className="font-normal text-text-muted">(optional)</span>
+            </label>
+            <Input
+              id="category"
+              maxLength={100}
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-dark" htmlFor="visibility">
+              Visibility
+            </label>
+            <Select
+              id="visibility"
+              value={visibility}
+              onChange={(event) => setVisibility(event.target.value as SetVisibility)}
+            >
+              <option value="private">Private — only you</option>
+              <option value="unlisted">Unlisted — anyone with the link</option>
+              <option value="public">Public — discoverable in Explore</option>
+            </Select>
+          </div>
+
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
+
+          <Button type="submit" disabled={submitting || !title}>
+            {submitting ? "Saving..." : "Save changes"}
+          </Button>
+        </form>
+      </CardBody>
+    </Card>
+  );
+}

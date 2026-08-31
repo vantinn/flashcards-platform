@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: flashcards
+    ports:
+      - "55432:5432"
+    volumes:
+      - flashcards_postgres_data:/var/lib/postgresql/data
+
+  # Caches Explore/search results only (see SearchService) — the API works
+  # fine without it (CacheService fails soft), this just makes that one
+  # read-heavy endpoint faster. No persistence needed: losing the cache on
+  # restart just means the next few searches are cache misses.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "56379:6379"
+
+volumes:
+  flashcards_postgres_data:
