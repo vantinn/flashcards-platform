@@ -13,8 +13,15 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Flashcard Learning Platform",
-  description: "Create flashcard sets, study, and track your learning progress.",
+  title: "Build Flashcard Sets and Study Smarter",
+  description:
+    "Create your own flashcard sets, study with Default Study, Cram Mode, and Deep Learning, track your progress, and discover public sets from other learners.",
+  openGraph: {
+    title: "Build Flashcard Sets and Study Smarter",
+    description:
+      "Create your own flashcard sets, study with Default Study, Cram Mode, and Deep Learning, track your progress, and discover public sets from other learners.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
