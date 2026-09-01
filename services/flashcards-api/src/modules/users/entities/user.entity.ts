@@ -41,6 +41,21 @@ export class User {
   @Column({ name: 'google_id', type: 'varchar', unique: true, nullable: true })
   googleId: string | null;
 
+  // Null means "registered with a password but hasn't confirmed the OTP
+  // yet" — login() rejects password-based sign-in until this is set.
+  // Google sign-in sets it at creation time since Google already verified
+  // that address. Excluded from serialization for the same reason as
+  // googleId — not part of the PublicUser contract.
+  @Exclude()
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
+
+  // Bumped on password reset so AuthService.refresh() can reject refresh
+  // tokens minted before the reset — see auth.service.ts issueTokens/refresh.
+  @Exclude()
+  @Column({ name: 'token_version', type: 'int', default: 0 })
+  tokenVersion: number;
+
   @OneToMany(() => FlashcardSet, (set) => set.creator)
   sets: Relation<FlashcardSet>[];
 
