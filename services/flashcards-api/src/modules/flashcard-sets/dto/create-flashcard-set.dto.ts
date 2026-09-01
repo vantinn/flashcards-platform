@@ -16,11 +16,8 @@ export class CreateFlashcardSetDto {
   @IsEnum(SetVisibility)
   visibility?: SetVisibility;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  category?: string;
-
+  // The official Set Category ("Danh mục") — English/Chinese/Free. Optional;
+  // defaults to FREE at the entity level when omitted.
   @IsOptional()
   @IsEnum(SetLanguage)
   language?: SetLanguage;

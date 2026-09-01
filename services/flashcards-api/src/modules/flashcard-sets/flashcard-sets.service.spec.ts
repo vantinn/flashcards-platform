@@ -14,7 +14,6 @@ function buildSet(overrides: Partial<FlashcardSet> = {}): FlashcardSet {
     description: null,
     coverImageUrl: null,
     creator: { id: 'owner-1' } as FlashcardSet['creator'],
-    category: null,
     language: SetLanguage.FREE,
     visibility: SetVisibility.PRIVATE,
     cardCount: 0,

@@ -35,7 +35,10 @@ export class SearchService {
       where: {
         visibility: SetVisibility.PUBLIC,
         ...(q ? { title: ILike(`%${q}%`) } : {}),
-        ...(category ? { category } : {}),
+        // `category` is the query param name; it filters FlashcardSet.language,
+        // the actual column backing the official Set Category — see that
+        // entity for why the two concepts share one column.
+        ...(category ? { language: category } : {}),
       },
       order: { studyCount: 'DESC' },
       skip: (page - 1) * limit,

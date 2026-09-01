@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
 import type { FlashcardSet } from "@/types/flashcard";
 
 export interface FlashcardSetCardProps {
@@ -20,11 +21,9 @@ export function FlashcardSetCard({ set, showVisibility = true }: FlashcardSetCar
             ) : null}
           </div>
           {set.description ? <p className="line-clamp-2 text-sm text-text-muted">{set.description}</p> : null}
-          {set.category ? (
-            <Badge variant="accent" className="w-fit">
-              {set.category}
-            </Badge>
-          ) : null}
+          <Badge variant="accent" className="w-fit">
+            🏷 {SET_LANGUAGE_LABELS[set.language]}
+          </Badge>
           <p className="mt-auto pt-1 text-xs text-text-muted">
             {set.cardCount} card{set.cardCount === 1 ? "" : "s"}
             {set.studyCount > 0 ? ` · studied ${set.studyCount} time${set.studyCount === 1 ? "" : "s"}` : ""}

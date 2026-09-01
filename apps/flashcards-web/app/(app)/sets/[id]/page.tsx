@@ -9,6 +9,7 @@ import { SetActions } from "@/components/flashcards/set-actions";
 import { ModeProgressCard } from "@/components/learning/mode-progress-card";
 import { serverApi, ApiError } from "@/lib/api-server";
 import { getCurrentUser } from "@/lib/current-user";
+import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
 import type { FlashcardSetDetail } from "@/types/flashcard";
 import type { LearningSessionSummary } from "@/types/learning";
 
@@ -61,7 +62,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-text-dark">{set.title}</h1>
             <Badge variant={set.visibility === "public" ? "success" : "default"}>{set.visibility}</Badge>
-            {set.category ? <Badge variant="accent">{set.category}</Badge> : null}
+            <Badge variant="accent">🏷 {SET_LANGUAGE_LABELS[set.language]}</Badge>
           </div>
           {set.description ? <p className="text-text-muted">{set.description}</p> : null}
           <p className="mt-1 text-sm text-text-muted">

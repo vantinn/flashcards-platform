@@ -19,9 +19,16 @@ export enum SetVisibility {
   PUBLIC = 'public',
 }
 
-// Drives which Web Speech API voice study/cram/deep-learning pronunciation
-// buttons use for this set's cards — distinct from `category` (a free-text
-// topic label) to avoid colliding with that existing field.
+// The official Set Category ("Danh mục") shown at set-creation and used to
+// filter Explore/search — English/Chinese/Free. It doubles as the driver for
+// which Web Speech API voice study/cram/deep-learning pronunciation buttons
+// use for this set's cards, since for this product the two are the same
+// axis: a Chinese-category set is, by definition, pronounced in Chinese.
+// A separate free-text `category` column used to exist alongside this and
+// was retired in favor of this single controlled enum — see the
+// `1788073338788-InitFlashcardSchema`/`1788169370139-AddCategoryIndex`
+// migrations for that now-orphaned (but data-preserving, never dropped)
+// column.
 export enum SetLanguage {
   ENGLISH = 'english',
   CHINESE = 'chinese',
@@ -46,14 +53,6 @@ export class FlashcardSet {
   @ManyToOne(() => User, (user) => user.sets, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'creator_id' })
   creator: Relation<User>;
-
-  // Kept as a plain label instead of a separate Category entity/module for the
-  // initial domain — promote to a real relation only if topic browsing needs
-  // more than a flat string (avoids an unused module in the foundation phase).
-  // Indexed: both Explore search and "my sets" filtering match on it exactly.
-  @Index()
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  category: string | null;
 
   @Index()
   @Column({ type: 'enum', enum: SetVisibility, default: SetVisibility.PRIVATE })
