@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { PronunciationButton } from "@/components/pronunciation/pronunciation-button";
 
 export interface McQuestionProps {
   front: string;
@@ -9,15 +10,20 @@ export interface McQuestionProps {
   selectedText: string | null;
   correctAnswer: string | null;
   onSelect: (choice: string) => void;
+  /** BCP-47 tag for pronunciation, or null for a Free-category set. */
+  language?: string | null;
 }
 
-export function McQuestion({ front, choices, disabled, selectedText, correctAnswer, onSelect }: McQuestionProps) {
+export function McQuestion({ front, choices, disabled, selectedText, correctAnswer, onSelect, language = null }: McQuestionProps) {
   const showFeedback = correctAnswer !== null;
 
   return (
     <div className="flex w-full max-w-2xl flex-col items-center gap-6">
       <div className="w-full rounded-card-lg border border-border bg-white p-8 text-center shadow-card-lg sm:p-12">
-        <p className="text-xl font-semibold text-text-dark sm:text-2xl">{front}</p>
+        <div className="flex items-center justify-center gap-2">
+          <p className="text-xl font-semibold text-text-dark sm:text-2xl">{front}</p>
+          <PronunciationButton text={front} language={language} compact />
+        </div>
         <p className="mt-2 text-sm text-text-muted">{front} có nghĩa là gì?</p>
       </div>
       <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">

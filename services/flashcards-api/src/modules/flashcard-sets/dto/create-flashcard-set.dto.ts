@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { SetVisibility } from '../entities/flashcard-set.entity.js';
+import { SetLanguage, SetVisibility } from '../entities/flashcard-set.entity.js';
 
 export class CreateFlashcardSetDto {
   @IsString()
@@ -20,4 +20,8 @@ export class CreateFlashcardSetDto {
   @IsString()
   @MaxLength(100)
   category?: string;
+
+  @IsOptional()
+  @IsEnum(SetLanguage)
+  language?: SetLanguage;
 }

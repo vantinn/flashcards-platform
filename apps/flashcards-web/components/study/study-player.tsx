@@ -17,6 +17,8 @@ export interface StudyPlayerProps {
   setId: string;
   setTitle: string;
   cards: Flashcard[];
+  /** BCP-47 tag for pronunciation, or null for a Free-category set. */
+  language?: string | null;
 }
 
 function shuffleArray<T>(items: T[]): T[] {
@@ -28,7 +30,7 @@ function shuffleArray<T>(items: T[]): T[] {
   return copy;
 }
 
-export function StudyPlayer({ setId, setTitle, cards }: StudyPlayerProps) {
+export function StudyPlayer({ setId, setTitle, cards, language = null }: StudyPlayerProps) {
   const router = useRouter();
   const [order, setOrder] = useState<Flashcard[]>(cards);
   const [index, setIndex] = useState(0);
@@ -156,7 +158,10 @@ export function StudyPlayer({ setId, setTitle, cards }: StudyPlayerProps) {
     function onKeyDown(event: KeyboardEvent) {
       if (completed || starting) return;
       const target = event.target;
-      if (target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(target.tagName)) return;
+      // BUTTON is excluded too now that the card contains the pronunciation
+      // button — otherwise Space-to-activate-speaker also triggers this
+      // shortcut's Space-to-flip via bubbling.
+      if (target instanceof HTMLElement && ["INPUT", "TEXTAREA", "BUTTON"].includes(target.tagName)) return;
 
       if (flipped && ["Digit1", "Digit2", "Digit3", "Digit4"].includes(event.code)) {
         event.preventDefault();
@@ -238,7 +243,13 @@ export function StudyPlayer({ setId, setTitle, cards }: StudyPlayerProps) {
         {setTitle}
       </p>
       <StudyProgress current={index} total={order.length} />
-      <FlashcardFlip front={currentCard.front} back={currentCard.back} flipped={flipped} onFlip={() => setFlipped((f) => !f)} />
+      <FlashcardFlip
+        front={currentCard.front}
+        back={currentCard.back}
+        flipped={flipped}
+        onFlip={() => setFlipped((f) => !f)}
+        language={language}
+      />
       {flipped ? (
         <AnswerButtons onAnswer={handleAnswer} />
       ) : (

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { McQuestion } from "./mc-question";
 import { TypedQuestion } from "./typed-question";
+import { PronunciationButton } from "@/components/pronunciation/pronunciation-button";
 import { api, ApiError } from "@/lib/api-client";
 import type {
   LearningAnswerResult,
@@ -24,6 +25,8 @@ export interface LearningPlayerProps {
   icon: string;
   title: string;
   completionMessage: string;
+  /** BCP-47 tag for pronunciation, or null for a Free-category set. */
+  language?: string | null;
 }
 
 type Phase = "starting" | "blocked" | "error" | "playing" | "completed";
@@ -40,7 +43,7 @@ interface Feedback {
  * `question.type` (server-decided) avoids duplicating the same
  * start/resume/answer/feedback machinery per mode.
  */
-export function LearningPlayer({ setId, setTitle, mode, icon, title, completionMessage }: LearningPlayerProps) {
+export function LearningPlayer({ setId, setTitle, mode, icon, title, completionMessage, language = null }: LearningPlayerProps) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("starting");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -220,6 +223,7 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
           selectedText={feedback?.selectedText ?? null}
           correctAnswer={feedback?.correctAnswer ?? null}
           onSelect={(choice) => submitAnswer({ selectedText: choice })}
+          language={language}
         />
       ) : (
         <TypedQuestion
@@ -230,24 +234,34 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
         />
       )}
 
-      <p
-        aria-live="polite"
-        className={
-          feedback
+      <div className="flex items-center gap-2">
+        <p
+          aria-live="polite"
+          className={
+            feedback
+              ? feedback.correct
+                ? "text-sm font-medium text-success"
+                : "text-sm font-medium text-danger"
+              : "text-sm text-text-muted"
+          }
+        >
+          {feedback
             ? feedback.correct
-              ? "text-sm font-medium text-success"
-              : "text-sm font-medium text-danger"
-            : "text-sm text-text-muted"
-        }
-      >
-        {feedback
-          ? feedback.correct
-            ? "Chính xác!"
-            : `Chưa đúng — đáp án đúng là: "${feedback.correctAnswer}"`
-          : question.type === "multiple_choice"
-            ? "Chọn một đáp án"
-            : "Nhập câu trả lời của bạn"}
-      </p>
+              ? "Chính xác!"
+              : `Chưa đúng — đáp án đúng là: "${feedback.correctAnswer}"`
+            : question.type === "multiple_choice"
+              ? "Chọn một đáp án"
+              : "Nhập câu trả lời của bạn"}
+        </p>
+        {/*
+          Typed Answer only: the backend withholds the target word (front)
+          until after submission, so pronunciation can only appear here, next
+          to the just-revealed correctAnswer — never before the user types.
+        */}
+        {question.type === "typed_answer" && feedback ? (
+          <PronunciationButton text={feedback.correctAnswer} language={language} compact />
+        ) : null}
+      </div>
     </div>
   );
 }

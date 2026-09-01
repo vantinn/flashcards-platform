@@ -9,13 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api-client";
-import type { FlashcardSet, SetVisibility } from "@/types/flashcard";
+import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
+import type { FlashcardSet, SetLanguage, SetVisibility } from "@/types/flashcard";
 
 export default function CreateSetPage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [language, setLanguage] = useState<SetLanguage>("free");
   const [visibility, setVisibility] = useState<SetVisibility>("private");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -29,6 +31,7 @@ export default function CreateSetPage() {
         title,
         description: description || undefined,
         category: category || undefined,
+        language,
         visibility,
       });
       router.push(`/sets/${set.id}`);
@@ -83,6 +86,23 @@ export default function CreateSetPage() {
                 onChange={(event) => setCategory(event.target.value)}
                 placeholder="e.g. Languages"
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-text-dark" htmlFor="language">
+                Danh mục <span className="font-normal text-text-muted">(optional)</span>
+              </label>
+              <Select
+                id="language"
+                value={language}
+                onChange={(event) => setLanguage(event.target.value as SetLanguage)}
+              >
+                {(Object.keys(SET_LANGUAGE_LABELS) as SetLanguage[]).map((value) => (
+                  <option key={value} value={value}>
+                    {SET_LANGUAGE_LABELS[value]}
+                  </option>
+                ))}
+              </Select>
             </div>
 
             <div className="flex flex-col gap-1.5">

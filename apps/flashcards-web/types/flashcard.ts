@@ -2,6 +2,9 @@ export type SetVisibility = "private" | "unlisted" | "public";
 export type ProgressStatus = "new" | "learning" | "mastered";
 export type CardRating = "again" | "hard" | "good" | "easy";
 
+/** Drives which Web Speech API voice pronunciation buttons use for a set's cards. */
+export type SetLanguage = "english" | "chinese" | "free";
+
 export interface PublicUser {
   id: string;
   email: string;
@@ -15,6 +18,7 @@ export interface FlashcardSet {
   description: string | null;
   coverImageUrl: string | null;
   category: string | null;
+  language: SetLanguage;
   visibility: SetVisibility;
   cardCount: number;
   studyCount: number;

@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
-import { FlashcardSet, SetVisibility } from './entities/flashcard-set.entity.js';
+import { FlashcardSet, SetLanguage, SetVisibility } from './entities/flashcard-set.entity.js';
 import { Flashcard } from '../flashcards/entities/flashcard.entity.js';
 import type { CreateFlashcardSetDto } from './dto/create-flashcard-set.dto.js';
 import type { UpdateFlashcardSetDto } from './dto/update-flashcard-set.dto.js';
@@ -23,6 +23,7 @@ export class FlashcardSetsService {
       description: dto.description ?? null,
       visibility: dto.visibility ?? SetVisibility.PRIVATE,
       category: dto.category ?? null,
+      language: dto.language ?? SetLanguage.FREE,
       creator: { id: creatorId },
     });
     const saved = await this.setsRepository.save(set);
@@ -104,6 +105,7 @@ export class FlashcardSetsService {
       ...(dto.description !== undefined ? { description: dto.description } : {}),
       ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
       ...(dto.category !== undefined ? { category: dto.category } : {}),
+      ...(dto.language !== undefined ? { language: dto.language } : {}),
     });
     const saved = await this.setsRepository.save(set);
     await this.invalidateSearchCache();
@@ -151,6 +153,7 @@ export class FlashcardSetsService {
           title: `${source.title} (copy)`,
           description: source.description,
           category: source.category,
+          language: source.language,
           visibility: SetVisibility.PRIVATE,
           creator: { id: userId },
           cardCount: sortedCards.length,
