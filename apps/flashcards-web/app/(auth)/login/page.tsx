@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardBody } from "@/components/ui/card";
-import { api, ApiError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/error-message";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import type { PublicUser } from "@/types/flashcard";
 
@@ -27,6 +28,7 @@ function LoginForm() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -38,7 +40,7 @@ function LoginForm() {
       // just changed the auth state that produced it.
       window.location.href = safeRedirectPath(searchParams.get("from"), "/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setError(getErrorMessage(err));
       setSubmitting(false);
     }
   }
@@ -61,19 +63,26 @@ function LoginForm() {
               type="email"
               required
               autoComplete="email"
+              disabled={submitting}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="login-password" className="text-sm font-medium text-text-dark">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="login-password" className="text-sm font-medium text-text-dark">
+                Password
+              </label>
+              <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <Input
               id="login-password"
               type="password"
               required
               autoComplete="current-password"
+              disabled={submitting}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />

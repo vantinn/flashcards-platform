@@ -1,12 +1,20 @@
-import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service.js';
 import type { User } from '../users/entities/user.entity.js';
+import { OtpService } from '../otp/otp.service.js';
+import { OtpPurpose } from '../otp/entities/otp-verification.entity.js';
+import { InvalidOtpException } from '../otp/otp.exceptions.js';
+import { EmailService } from '../email/email.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { LoginDto } from './dto/login.dto.js';
+import type { VerifyOtpDto } from './dto/verify-otp.dto.js';
+import type { ResendOtpDto } from './dto/resend-otp.dto.js';
+import type { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import type { ResetPasswordDto } from './dto/reset-password.dto.js';
 import type { JwtPayload } from './auth.types.js';
 import type { GoogleProfile } from './strategies/google.strategy.js';
 
@@ -17,6 +25,15 @@ export interface TokenPair {
   refreshToken: string;
 }
 
+export interface PendingRegistration {
+  email: string;
+  expiresInMinutes: number;
+  resendAvailableInSeconds: number;
+}
+
+const GENERIC_FORGOT_PASSWORD_MESSAGE = 'If an account with this email exists, a verification code has been sent.';
+const GENERIC_RESEND_MESSAGE = 'If a matching request exists, a new verification code has been sent.';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -26,24 +43,138 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly otpService: OtpService,
+    private readonly emailService: EmailService,
   ) {
     this.googleClient = new OAuth2Client(this.configService.get<string>('auth.googleClientId'));
   }
 
-  async register(dto: RegisterDto): Promise<{ user: User; tokens: TokenPair }> {
+  private get otpExpirationMinutes(): number {
+    return this.configService.get<number>('otp.expirationMinutes')!;
+  }
+
+  private get otpResendCooldownSeconds(): number {
+    return this.configService.get<number>('otp.resendCooldownSeconds')!;
+  }
+
+  /**
+   * Creates (or reuses, if still unverified) the account and sends a
+   * REGISTRATION OTP. No tokens are issued here — login/verifyRegistration
+   * is the only path to a session, since the email hasn't been confirmed
+   * yet. Re-registering the same still-unverified email updates that row
+   * in place rather than creating a duplicate (the unique email constraint
+   * would reject a second insert anyway) — this is what makes retries safe.
+   */
+  async register(dto: RegisterDto): Promise<PendingRegistration> {
     const existing = await this.usersService.findByEmail(dto.email);
-    if (existing) {
+
+    if (existing?.emailVerifiedAt) {
       throw new ConflictException('An account with this email already exists');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, PASSWORD_SALT_ROUNDS);
-    const user = await this.usersService.create({
-      email: dto.email,
-      displayName: dto.displayName,
-      passwordHash,
-    });
+    const user = existing
+      ? await this.usersService.updatePendingRegistration(existing.id, { displayName: dto.displayName, passwordHash })
+      : await this.usersService.create({ email: dto.email, displayName: dto.displayName, passwordHash, emailVerifiedAt: null });
 
-    return { user, tokens: this.issueTokens(user) };
+    return this.issueAndSendRegistrationOtp(user);
+  }
+
+  private async issueAndSendRegistrationOtp(user: User): Promise<PendingRegistration> {
+    const { code } = await this.otpService.issueOtp(user.id, OtpPurpose.REGISTRATION);
+    await this.emailService.sendRegistrationOtp(user.email, code, this.otpExpirationMinutes);
+
+    return {
+      email: user.email,
+      expiresInMinutes: this.otpExpirationMinutes,
+      resendAvailableInSeconds: this.otpResendCooldownSeconds,
+    };
+  }
+
+  async verifyRegistration(dto: VerifyOtpDto): Promise<{ user: User; tokens: TokenPair }> {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) {
+      // Same error an existing-but-wrong-code user would see — this
+      // endpoint never confirms or denies that an email has a pending
+      // registration.
+      throw new InvalidOtpException();
+    }
+
+    await this.otpService.verifyOtp(user.id, OtpPurpose.REGISTRATION, dto.otp);
+    await this.usersService.markEmailVerified(user.id);
+
+    const verifiedUser = { ...user, emailVerifiedAt: new Date() };
+    return { user: verifiedUser, tokens: this.issueTokens(verifiedUser) };
+  }
+
+  /**
+   * Resend for PASSWORD_RESET delegates straight to forgotPassword() — same
+   * enumeration-safe contract, since "resend" and "request a reset code"
+   * are the same operation from the account-existence-hiding point of view.
+   * Resend for REGISTRATION is allowed to be specific: the caller already
+   * knows this email exists (they just tried to register it themselves).
+   */
+  async resendOtp(dto: ResendOtpDto): Promise<{ message: string }> {
+    if (dto.purpose === OtpPurpose.PASSWORD_RESET) {
+      return this.forgotPassword({ email: dto.email });
+    }
+
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user || user.emailVerifiedAt) {
+      throw new BadRequestException('No pending registration found for this email.');
+    }
+
+    await this.issueAndSendRegistrationOtp(user);
+    return { message: GENERIC_RESEND_MESSAGE };
+  }
+
+  /**
+   * Always returns the same generic message regardless of whether the
+   * account exists, has a password at all, or whether sending/rate-limiting
+   * failed internally — see the class-level enumeration-safety requirement.
+   * Real failures are logged server-side for operability, never surfaced.
+   */
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    try {
+      const user = await this.usersService.findByEmail(dto.email);
+      if (user?.passwordHash) {
+        const { code } = await this.otpService.issueOtp(user.id, OtpPurpose.PASSWORD_RESET);
+        await this.emailService.sendPasswordResetOtp(user.email, code, this.otpExpirationMinutes);
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`forgotPassword: internal error suppressed for enumeration safety (${reason})`);
+    }
+
+    return { message: GENERIC_FORGOT_PASSWORD_MESSAGE };
+  }
+
+  async verifyResetOtp(dto: VerifyOtpDto): Promise<{ resetToken: string; expiresInMinutes: number }> {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) {
+      throw new InvalidOtpException();
+    }
+
+    const { otpRowId } = await this.otpService.verifyOtp(user.id, OtpPurpose.PASSWORD_RESET, dto.otp);
+    const { resetToken, expiresAt } = await this.otpService.issueResetToken(otpRowId);
+
+    return { resetToken, expiresInMinutes: Math.round((expiresAt.getTime() - Date.now()) / 60_000) };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const { userId } = await this.otpService.consumeResetToken(dto.resetToken);
+    const passwordHash = await bcrypt.hash(dto.newPassword, PASSWORD_SALT_ROUNDS);
+
+    await this.usersService.updatePassword(userId, passwordHash);
+    // Kills every refresh token issued before this point — see the
+    // tokenVersion note on JwtPayload / AuthService.refresh().
+    await this.usersService.incrementTokenVersion(userId);
+
+    return { message: 'Password has been reset. Please log in with your new password.' };
   }
 
   async login(dto: LoginDto): Promise<{ user: User; tokens: TokenPair }> {
@@ -61,6 +192,13 @@ export class AuthService {
     if (!passwordMatches) {
       this.logger.warn(`Login failed (wrong password): ${dto.email}`);
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Checked after the password match (not before) so a guesser without
+    // the right password can't use this response to learn whether an
+    // account is verified.
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException('Please verify your email before logging in.');
     }
 
     return { user, tokens: this.issueTokens(user) };
@@ -82,6 +220,11 @@ export class AuthService {
     const user = await this.usersService.findById(payload.sub);
     if (!user) {
       this.logger.warn(`Refresh rejected: token valid but user ${payload.sub} no longer exists`);
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (payload.tokenVersion !== user.tokenVersion) {
+      this.logger.warn(`Refresh rejected: token version stale for user ${payload.sub} (password reset since issuance)`);
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
@@ -130,7 +273,7 @@ export class AuthService {
   }
 
   private issueTokens(user: User): TokenPair {
-    const payload: JwtPayload = { sub: user.id, email: user.email };
+    const payload: JwtPayload = { sub: user.id, email: user.email, tokenVersion: user.tokenVersion };
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('auth.jwtAccessSecret'),
