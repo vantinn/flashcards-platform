@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SearchService } from './search.service.js';
-import { FlashcardSet, SetVisibility } from '../flashcard-sets/entities/flashcard-set.entity.js';
+import { FlashcardSet, SetLanguage, SetVisibility } from '../flashcard-sets/entities/flashcard-set.entity.js';
 import { CacheService } from '../../redis/cache.service.js';
 
 describe('SearchService', () => {
@@ -53,9 +53,34 @@ describe('SearchService', () => {
   });
 
   it('only ever queries for PUBLIC sets, regardless of the search term or category — private/unlisted sets must never be discoverable here', async () => {
-    await service.searchPublicSets({ page: 1, limit: 20, q: 'anything', category: 'english' });
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'anything', category: SetLanguage.ENGLISH });
 
     const [options] = repo.findAndCount.mock.calls[0];
     expect(options.where).toMatchObject({ visibility: SetVisibility.PUBLIC });
+  });
+
+  it('filters on the official Set Category (FlashcardSet.language) when one is given', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: '', category: SetLanguage.CHINESE });
+
+    const [options] = repo.findAndCount.mock.calls[0];
+    expect(options.where).toMatchObject({ language: SetLanguage.CHINESE });
+  });
+
+  it('applies no category restriction when none is given', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: '', category: undefined });
+
+    const [options] = repo.findAndCount.mock.calls[0];
+    expect(options.where).not.toHaveProperty('language');
+  });
+
+  it('composes the search term and category into one AND-ed query', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'HSK', category: SetLanguage.CHINESE });
+
+    const [options] = repo.findAndCount.mock.calls[0];
+    expect(options.where).toMatchObject({
+      visibility: SetVisibility.PUBLIC,
+      language: SetLanguage.CHINESE,
+    });
+    expect(options.where.title).toBeDefined(); // the ILike('%HSK%') condition
   });
 });

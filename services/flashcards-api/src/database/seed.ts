@@ -2,7 +2,7 @@ import 'dotenv/config';
 import * as bcrypt from 'bcrypt';
 import AppDataSource from './data-source.js';
 import { User } from '../modules/users/entities/user.entity.js';
-import { FlashcardSet, SetVisibility } from '../modules/flashcard-sets/entities/flashcard-set.entity.js';
+import { FlashcardSet, SetLanguage, SetVisibility } from '../modules/flashcard-sets/entities/flashcard-set.entity.js';
 import { Flashcard } from '../modules/flashcards/entities/flashcard.entity.js';
 
 // Local development seed data only — never run against a production
@@ -39,12 +39,12 @@ async function seed() {
     return;
   }
 
-  const sampleSets: { title: string; description: string; visibility: SetVisibility; category: string; cards: [string, string][] }[] = [
+  const sampleSets: { title: string; description: string; visibility: SetVisibility; language: SetLanguage; cards: [string, string][] }[] = [
     {
       title: 'Spanish Basics',
       description: 'Common greetings and everyday phrases.',
       visibility: SetVisibility.PUBLIC,
-      category: 'Languages',
+      language: SetLanguage.FREE,
       cards: [
         ['Hola', 'Hello'],
         ['Gracias', 'Thank you'],
@@ -56,7 +56,7 @@ async function seed() {
       title: 'World Capitals',
       description: 'Capital cities of well-known countries.',
       visibility: SetVisibility.PUBLIC,
-      category: 'Geography',
+      language: SetLanguage.FREE,
       cards: [
         ['France', 'Paris'],
         ['Japan', 'Tokyo'],
@@ -68,7 +68,7 @@ async function seed() {
       title: 'Personal Notes',
       description: 'Private scratch set for testing.',
       visibility: SetVisibility.PRIVATE,
-      category: 'Misc',
+      language: SetLanguage.FREE,
       cards: [['Test front', 'Test back']],
     },
   ];
@@ -79,7 +79,7 @@ async function seed() {
         title: sample.title,
         description: sample.description,
         visibility: sample.visibility,
-        category: sample.category,
+        language: sample.language,
         creator: devUser,
         cardCount: sample.cards.length,
       }),

@@ -2,12 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/ui/page-container";
 import { SearchBar } from "@/components/ui/search-bar";
-import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FlashcardSetCard } from "@/components/flashcards/flashcard-set-card";
 import { serverApi, ApiError } from "@/lib/api-server";
-import type { FlashcardSet } from "@/types/flashcard";
+import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
+import type { FlashcardSet, SetLanguage } from "@/types/flashcard";
 import type { PaginatedResult } from "@/types/pagination";
 
 const PAGE_SIZE = 12;
@@ -15,10 +16,13 @@ const PAGE_SIZE = 12;
 async function searchPublicSets(params: { q: string; category: string; page: number }) {
   const query = new URLSearchParams({
     q: params.q,
-    category: params.category,
     page: String(params.page),
     limit: String(PAGE_SIZE),
   });
+  // "Tất cả danh mục" (all categories) means no filter — omit the param
+  // rather than sending category="", which the backend's @IsEnum validation
+  // would reject as an invalid value rather than treat as "no restriction".
+  if (params.category) query.set("category", params.category);
   try {
     // "Public" sets are only public within the authenticated app, so this
     // must forward the caller's session like every other set-data fetch —
@@ -64,7 +68,14 @@ export default async function ExplorePage({
 
       <form action="/explore" className="flex flex-wrap gap-2">
         <SearchBar defaultValue={q} placeholder="Search public sets..." className="max-w-sm" />
-        <Input name="category" defaultValue={category} placeholder="Category" className="max-w-[180px]" />
+        <Select name="category" defaultValue={category} className="max-w-[180px]">
+          <option value="">Tất cả danh mục</option>
+          {(Object.keys(SET_LANGUAGE_LABELS) as SetLanguage[]).map((value) => (
+            <option key={value} value={value}>
+              {SET_LANGUAGE_LABELS[value]}
+            </option>
+          ))}
+        </Select>
         <Button type="submit">Search</Button>
       </form>
 

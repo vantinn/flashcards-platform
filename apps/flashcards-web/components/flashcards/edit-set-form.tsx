@@ -15,7 +15,7 @@ export interface EditSetFormProps {
   set: FlashcardSetDetail;
 }
 
-// Mirrors CreateSetPage's form fields exactly (title/description/category/
+// Mirrors CreateSetPage's form fields exactly (title/description/Danh mục/
 // visibility) — this was the one CRUD gap the cross-platform audit found:
 // Android and iOS both had a dedicated "edit set details" screen, but the
 // web app's "Edit" button on a set only ever opened the card editor, with
@@ -25,7 +25,6 @@ export function EditSetForm({ set }: EditSetFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState(set.title);
   const [description, setDescription] = useState(set.description ?? "");
-  const [category, setCategory] = useState(set.category ?? "");
   const [language, setLanguage] = useState<SetLanguage>(set.language);
   const [visibility, setVisibility] = useState<SetVisibility>(set.visibility);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +38,6 @@ export function EditSetForm({ set }: EditSetFormProps) {
       await api.patch<FlashcardSet>(`/flashcard-sets/${set.id}`, {
         title,
         description: description || undefined,
-        category: category || undefined,
         language,
         visibility,
       });
@@ -81,20 +79,8 @@ export function EditSetForm({ set }: EditSetFormProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-text-dark" htmlFor="category">
-              Category <span className="font-normal text-text-muted">(optional)</span>
-            </label>
-            <Input
-              id="category"
-              maxLength={100}
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="language">
-              Danh mục <span className="font-normal text-text-muted">(optional)</span>
+              Danh mục
             </label>
             <Select id="language" value={language} onChange={(event) => setLanguage(event.target.value as SetLanguage)}>
               {(Object.keys(SET_LANGUAGE_LABELS) as SetLanguage[]).map((value) => (

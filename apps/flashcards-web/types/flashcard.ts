@@ -2,7 +2,12 @@ export type SetVisibility = "private" | "unlisted" | "public";
 export type ProgressStatus = "new" | "learning" | "mastered";
 export type CardRating = "again" | "hard" | "good" | "easy";
 
-/** Drives which Web Speech API voice pronunciation buttons use for a set's cards. */
+/**
+ * The official Set Category ("Danh mục" — Tiếng Anh/Tiếng Trung/Tự do),
+ * chosen at set creation and used to filter Explore/search. It doubles as
+ * the driver for which Web Speech API voice pronunciation buttons use for a
+ * set's cards, since for this product the two are the same axis.
+ */
 export type SetLanguage = "english" | "chinese" | "free";
 
 export interface PublicUser {
@@ -17,7 +22,6 @@ export interface FlashcardSet {
   title: string;
   description: string | null;
   coverImageUrl: string | null;
-  category: string | null;
   language: SetLanguage;
   visibility: SetVisibility;
   cardCount: number;

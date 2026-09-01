@@ -16,7 +16,6 @@ export default function CreateSetPage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
   const [language, setLanguage] = useState<SetLanguage>("free");
   const [visibility, setVisibility] = useState<SetVisibility>("private");
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +29,6 @@ export default function CreateSetPage() {
       const set = await api.post<FlashcardSet>("/flashcard-sets", {
         title,
         description: description || undefined,
-        category: category || undefined,
         language,
         visibility,
       });
@@ -76,21 +74,8 @@ export default function CreateSetPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-text-dark" htmlFor="category">
-                Category <span className="font-normal text-text-muted">(optional)</span>
-              </label>
-              <Input
-                id="category"
-                maxLength={100}
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-                placeholder="e.g. Languages"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-text-dark" htmlFor="language">
-                Danh mục <span className="font-normal text-text-muted">(optional)</span>
+                Danh mục
               </label>
               <Select
                 id="language"

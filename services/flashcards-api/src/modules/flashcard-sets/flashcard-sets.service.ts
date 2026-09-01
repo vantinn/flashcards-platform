@@ -22,7 +22,6 @@ export class FlashcardSetsService {
       title: dto.title,
       description: dto.description ?? null,
       visibility: dto.visibility ?? SetVisibility.PRIVATE,
-      category: dto.category ?? null,
       language: dto.language ?? SetLanguage.FREE,
       creator: { id: creatorId },
     });
@@ -104,7 +103,6 @@ export class FlashcardSetsService {
       ...(dto.title !== undefined ? { title: dto.title } : {}),
       ...(dto.description !== undefined ? { description: dto.description } : {}),
       ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
-      ...(dto.category !== undefined ? { category: dto.category } : {}),
       ...(dto.language !== undefined ? { language: dto.language } : {}),
     });
     const saved = await this.setsRepository.save(set);
@@ -119,9 +117,10 @@ export class FlashcardSetsService {
   }
 
   /**
-   * Only called from create/update/remove — title, category, and
-   * visibility are the only fields Explore's search can filter or match
-   * on. incrementStudyCount() deliberately does NOT invalidate: it only
+   * Only called from create/update/remove — title, language (the official
+   * Set Category), and visibility are the only fields Explore's search can
+   * filter or match on. incrementStudyCount() deliberately does NOT
+   * invalidate: it only
    * shifts ordering (most-studied-first), fires on every completed study
    * session, and a cache that gets flushed that often stops caching
    * anything. A stale ordering for up to the cache's TTL is a fine
@@ -152,7 +151,6 @@ export class FlashcardSetsService {
         manager.create(FlashcardSet, {
           title: `${source.title} (copy)`,
           description: source.description,
-          category: source.category,
           language: source.language,
           visibility: SetVisibility.PRIVATE,
           creator: { id: userId },
