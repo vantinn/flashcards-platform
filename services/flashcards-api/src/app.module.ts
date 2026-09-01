@@ -20,12 +20,15 @@ import { Flashcard } from './modules/flashcards/entities/flashcard.entity.js';
 import { StudySession } from './modules/study/entities/study-session.entity.js';
 import { StudyProgress } from './modules/progress/entities/study-progress.entity.js';
 import { OtpVerification } from './modules/otp/entities/otp-verification.entity.js';
+import { LearningSession } from './modules/learning/entities/learning-session.entity.js';
+import { LearningCardState } from './modules/learning/entities/learning-card-state.entity.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { FlashcardSetsModule } from './modules/flashcard-sets/flashcard-sets.module.js';
 import { FlashcardsModule } from './modules/flashcards/flashcards.module.js';
 import { StudyModule } from './modules/study/study.module.js';
 import { ProgressModule } from './modules/progress/progress.module.js';
+import { LearningModule } from './modules/learning/learning.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 
 @Module({
@@ -44,7 +47,16 @@ import { SearchModule } from './modules/search/search.module.js';
         username: config.get<string>('database.username'),
         password: config.get<string>('database.password'),
         database: config.get<string>('database.name'),
-        entities: [User, FlashcardSet, Flashcard, StudySession, StudyProgress, OtpVerification],
+        entities: [
+          User,
+          FlashcardSet,
+          Flashcard,
+          StudySession,
+          StudyProgress,
+          OtpVerification,
+          LearningSession,
+          LearningCardState,
+        ],
         // Schema changes only ever happen through reviewed TypeORM
         // migrations (see src/database) — never via drift-prone auto-sync.
         synchronize: false,
@@ -56,6 +68,7 @@ import { SearchModule } from './modules/search/search.module.js';
     FlashcardsModule,
     StudyModule,
     ProgressModule,
+    LearningModule,
     SearchModule,
   ],
   controllers: [AppController],
