@@ -336,7 +336,6 @@ const en: typeof vi = {
     startLearning: "Start learning",
     explorePublicSets: "Explore public sets",
     heroMockQuestion: "Question",
-    heroMockFront: "Hello",
     heroMockHint: "Tap to reveal the answer",
     createEyebrow: "Create & organize",
     createTitle: "Turn what you need to learn into flashcards.",

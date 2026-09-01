@@ -43,7 +43,9 @@ export async function HeroSection({ user }: HeroSectionProps) {
           <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
             {t("landing.heroMockQuestion")}
           </span>
-          <p className="mt-2 text-xl font-semibold text-text-dark sm:text-2xl">{t("landing.heroMockFront")}</p>
+          {/* Intentional static demo content, not a UI label — must read
+              identically in every locale, so it's a literal, not a t() key. */}
+          <p className="mt-2 text-xl font-semibold text-text-dark sm:text-2xl">Xin chào</p>
           <p className="mt-1 text-sm text-text-muted">{t("landing.heroMockHint")}</p>
           <div className="mt-6 grid grid-cols-2 gap-2">
             {MOCK_CHOICES.map((choice, index) => (

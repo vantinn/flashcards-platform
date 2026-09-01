@@ -334,7 +334,6 @@ const vi = {
     startLearning: "Bắt đầu học",
     explorePublicSets: "Khám phá bộ thẻ công khai",
     heroMockQuestion: "Câu hỏi",
-    heroMockFront: "Xin chào",
     heroMockHint: "Nhấn để xem đáp án",
     createEyebrow: "Tạo & sắp xếp",
     createTitle: "Biến điều bạn cần học thành thẻ ghi nhớ.",
