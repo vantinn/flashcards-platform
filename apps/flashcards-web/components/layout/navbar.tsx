@@ -3,7 +3,7 @@ import { UserMenu } from "./user-menu";
 import { MobileNav } from "./mobile-nav";
 import type { PublicUser } from "@/types/flashcard";
 
-const publicLinks = [{ href: "/explore", label: "Explore" }];
+const publicLinks: { href: string; label: string }[] = [];
 const authedLinks = [
   { href: "/explore", label: "Explore" },
   { href: "/sets", label: "My Sets" },
@@ -15,12 +15,14 @@ export interface NavbarProps {
 }
 
 export function Navbar({ user = null }: NavbarProps) {
-  // Signed-out visitors must not get /sets or /dashboard links: Next.js
-  // prefetches visible <Link> hrefs automatically, proxy.ts 307s those
+  // The whole app is authenticated-only, so signed-out visitors get no
+  // application nav links at all — just Log in / Sign up. Beyond that being
+  // the correct product behavior, it also avoids a real bug: Next.js
+  // prefetches visible <Link> hrefs automatically, proxy.ts redirects those
   // (unauthenticated) to /login, and the client Router Cache can then keep
   // reusing that cached redirect even right after the user logs in —
-  // stranding them back on /login. Simplest fix is to never render (and
-  // therefore never prefetch) a link the visitor isn't allowed to use yet.
+  // stranding them back on /login. Never rendering (and therefore never
+  // prefetching) a link the visitor isn't allowed to use yet avoids that.
   const links = user ? authedLinks : publicLinks;
 
   return (

@@ -1,8 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
-import { OptionalUser } from '../../common/decorators/optional-user.decorator.js';
-import { Public } from '../../common/decorators/public.decorator.js';
-import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard.js';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { FlashcardSetsService } from './flashcard-sets.service.js';
 import { CreateFlashcardSetDto } from './dto/create-flashcard-set.dto.js';
@@ -23,11 +20,11 @@ export class FlashcardSetsController {
     return this.flashcardSetsService.create(user.id, dto);
   }
 
-  @Public()
-  @UseGuards(OptionalJwtAuthGuard)
+  // No @Public() — a set (even a public one) is only visible to a signed-in
+  // user; the global JwtAuthGuard rejects anonymous callers before this runs.
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string, @OptionalUser() user?: AuthenticatedUser) {
-    return this.flashcardSetsService.findOneVisibleTo(id, user?.id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.flashcardSetsService.findOneVisibleTo(id, user.id);
   }
 
   @Patch(':id')
