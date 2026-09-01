@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PageContainer } from "@/components/ui/page-container";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,13 @@ async function loadSet(id: string) {
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       notFound();
+    }
+    // Defense-in-depth: proxy.ts already blocks an anonymous request before
+    // it reaches this page, but a stale-but-present cookie can still fail
+    // backend auth here — send it through the same login flow rather than
+    // rendering the uncaught-error page.
+    if (error instanceof ApiError && error.status === 401) {
+      redirect(`/login?from=${encodeURIComponent(`/sets/${id}`)}`);
     }
     throw error;
   }

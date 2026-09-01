@@ -4,9 +4,11 @@ import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/current-user";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  // Tolerant of anonymous visitors — /explore is public, so this layout
-  // can't assume a session exists just because proxy.ts guards /dashboard
-  // and /sets specifically.
+  // proxy.ts already blocks anonymous requests to every route under this
+  // group, so `user` is normally always populated here. getCurrentUser()
+  // is still tolerant of a null result (rather than throwing) as
+  // defense-in-depth for the case where a stale-but-present cookie passes
+  // the proxy's presence check but the backend rejects it as invalid.
   const user = await getCurrentUser();
 
   return (

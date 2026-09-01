@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/ui/page-container";
 import { SearchBar } from "@/components/ui/search-bar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FlashcardSetCard } from "@/components/flashcards/flashcard-set-card";
-import { api } from "@/lib/api-client";
+import { serverApi, ApiError } from "@/lib/api-server";
 import type { FlashcardSet } from "@/types/flashcard";
 import type { PaginatedResult } from "@/types/pagination";
 
@@ -18,7 +19,21 @@ async function searchPublicSets(params: { q: string; category: string; page: num
     page: String(params.page),
     limit: String(PAGE_SIZE),
   });
-  return api.get<PaginatedResult<FlashcardSet>>(`/search?${query.toString()}`);
+  try {
+    // "Public" sets are only public within the authenticated app, so this
+    // must forward the caller's session like every other set-data fetch —
+    // serverApi (not the plain browser api client) is what forwards cookies
+    // server-side.
+    return await serverApi.get<PaginatedResult<FlashcardSet>>(`/search?${query.toString()}`);
+  } catch (error) {
+    // Defense-in-depth: proxy.ts already blocks an anonymous request before
+    // it reaches this page, but a stale-but-present cookie can still fail
+    // backend auth here.
+    if (error instanceof ApiError && error.status === 401) {
+      redirect("/login?from=%2Fexplore");
+    }
+    throw error;
+  }
 }
 
 export default async function ExplorePage({
