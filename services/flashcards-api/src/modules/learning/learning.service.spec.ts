@@ -294,6 +294,39 @@ describe('LearningService', () => {
       expect(db.sessions.rows).toHaveLength(2);
     });
 
+    it('tracks progress independently per user on the same public set — one user finishing does not affect another', async () => {
+      const otherUserId = 'user-2';
+
+      const { session: sessionA, question: questionA } = await service.start(userId, setId, LearningMode.CRAM);
+      const { session: sessionB } = await service.start(otherUserId, setId, LearningMode.CRAM);
+
+      expect(sessionA.id).not.toBe(sessionB.id);
+      expect(sessionB.progress).toEqual({ completed: 0, total: 4, percent: 0 });
+
+      // User A answers every question correctly; user B never touches their session.
+      let current = questionA!;
+      for (let i = 0; i < 4; i++) {
+        const card = cards.find((c) => c.front === current.front)!;
+        const result = await service.answer(sessionA.id, userId, { flashcardId: current.flashcardId, selectedText: card.back });
+        current = result.nextQuestion!;
+      }
+
+      const finishedA = await service.getSession(sessionA.id, userId);
+      const untouchedB = await service.getSession(sessionB.id, otherUserId);
+      expect(finishedA.status).toBe(LearningSessionStatus.COMPLETED);
+      expect(finishedA.progress.percent).toBe(100);
+      expect(untouchedB.status).toBe(LearningSessionStatus.IN_PROGRESS);
+      expect(untouchedB.progress).toEqual({ completed: 0, total: 4, percent: 0 });
+
+      // Each user's card states are their own rows, not shared.
+      const cardStatesA = db.cardStates.rows.filter((r) => r.session.id === sessionA.id);
+      const cardStatesB = db.cardStates.rows.filter((r) => r.session.id === sessionB.id);
+      expect(cardStatesA).toHaveLength(4);
+      expect(cardStatesB).toHaveLength(4);
+      expect(cardStatesA.every((r) => r.completed)).toBe(true);
+      expect(cardStatesB.every((r) => !r.completed)).toBe(true);
+    });
+
     it('a completed session is returned as-is with no question and is not auto-restarted', async () => {
       const { session } = await service.start(userId, setId, LearningMode.CRAM);
       const row = db.sessions.rows.find((r) => r.id === session.id)!;
