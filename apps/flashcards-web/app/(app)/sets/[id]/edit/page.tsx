@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { FlashcardEditor } from "@/components/flashcards/flashcard-editor";
 import { serverApi, ApiError } from "@/lib/api-server";
 import { getCurrentUser } from "@/lib/current-user";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
 import type { FlashcardSetDetail } from "@/types/flashcard";
 
 async function loadSet(id: string) {
@@ -20,7 +22,8 @@ async function loadSet(id: string) {
 
 export default async function EditSetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: setId } = await params;
-  const [set, currentUser] = await Promise.all([loadSet(setId), getCurrentUser()]);
+  const [set, currentUser, locale] = await Promise.all([loadSet(setId), getCurrentUser(), getLocale()]);
+  const t = createTranslator(getDictionary(locale));
 
   if (!currentUser) {
     redirect(`/login?from=/sets/${setId}/edit`);
@@ -33,11 +36,11 @@ export default async function EditSetPage({ params }: { params: Promise<{ id: st
     <PageContainer className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-dark">Cards in &ldquo;{set.title}&rdquo;</h1>
-          <p className="text-text-muted">Add, edit, reorder, and remove cards.</p>
+          <h1 className="text-2xl font-bold text-text-dark">{t("sets.cardsInSet", { title: set.title })}</h1>
+          <p className="text-text-muted">{t("sets.addEditRemoveCards")}</p>
         </div>
         <Link href={`/sets/${setId}`}>
-          <Button variant="outline">Back to set</Button>
+          <Button variant="outline">{t("sets.backToSet")}</Button>
         </Link>
       </div>
 

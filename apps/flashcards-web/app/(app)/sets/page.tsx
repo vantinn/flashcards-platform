@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/search-bar";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ArrowLeftIcon, ArrowRightIcon } from "@/components/ui/icons";
 import { FlashcardSetCard } from "@/components/flashcards/flashcard-set-card";
 import { serverApi, ApiError } from "@/lib/api-server";
-import type { FlashcardSet } from "@/types/flashcard";
+import { SET_VISIBILITIES, setVisibilityLabel } from "@/lib/set-visibility";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
+import type { FlashcardSet, SetVisibility } from "@/types/flashcard";
 import type { PaginatedResult } from "@/types/pagination";
 
 const PAGE_SIZE = 12;
@@ -34,6 +38,7 @@ export default async function MySetsPage({
 }) {
   const { q = "", visibility = "", page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
+  const t = createTranslator(getDictionary(await getLocale()));
 
   const result = await loadMySets({ q, visibility, page });
   const totalPages = Math.max(1, Math.ceil(result.total / result.limit));
@@ -51,37 +56,39 @@ export default async function MySetsPage({
     <PageContainer className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text-dark">My flashcard sets</h1>
-          <p className="text-text-muted">Everything you&apos;ve created, in one place.</p>
+          <h1 className="text-2xl font-bold text-text-dark">{t("sets.myTitle")}</h1>
+          <p className="text-text-muted">{t("sets.mySubtitle")}</p>
         </div>
         <Link href="/sets/create">
-          <Button>New set</Button>
+          <Button>{t("sets.newSet")}</Button>
         </Link>
       </div>
 
       <form action="/sets" className="flex flex-wrap gap-2">
-        <SearchBar name="q" defaultValue={q} placeholder="Search my sets..." className="max-w-sm" />
+        <SearchBar name="q" defaultValue={q} placeholder={t("sets.searchPlaceholder")} className="max-w-sm" />
         <Select name="visibility" defaultValue={visibility} className="max-w-[180px]">
-          <option value="">All visibility</option>
-          <option value="private">Private</option>
-          <option value="unlisted">Unlisted</option>
-          <option value="public">Public</option>
+          <option value="">{t("visibility.allVisibility")}</option>
+          {SET_VISIBILITIES.map((value: SetVisibility) => (
+            <option key={value} value={value}>
+              {setVisibilityLabel(value, t)}
+            </option>
+          ))}
         </Select>
-        <Button type="submit">Filter</Button>
+        <Button type="submit">{t("sets.filter")}</Button>
       </form>
 
       {result.items.length === 0 ? (
         <EmptyState
-          title={hasFilters ? "No sets match your filters" : "No flashcard sets yet"}
-          description={hasFilters ? "Try a different search or clear your filters." : "Create your first set to start studying."}
+          title={hasFilters ? t("sets.noSetsFilterTitle") : t("sets.noSetsTitle")}
+          description={hasFilters ? t("sets.noSetsFilterDesc") : t("sets.noSetsDesc")}
           action={
             hasFilters ? (
               <Link href="/sets">
-                <Button variant="outline">Clear filters</Button>
+                <Button variant="outline">{t("sets.clearFilters")}</Button>
               </Link>
             ) : (
               <Link href="/sets/create">
-                <Button>Create a set</Button>
+                <Button>{t("sets.createASet")}</Button>
               </Link>
             )
           }
@@ -101,25 +108,25 @@ export default async function MySetsPage({
                 aria-disabled={page <= 1}
                 className={
                   page <= 1
-                    ? "pointer-events-none rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
-                    : "rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
+                    ? "pointer-events-none flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
+                    : "flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
                 }
               >
-                ← Previous
+                <ArrowLeftIcon className="h-4 w-4" />
+                {t("common.previous")}
               </Link>
-              <span className="text-sm text-text-muted">
-                Page {page} of {totalPages}
-              </span>
+              <span className="text-sm text-text-muted">{t("sets.pageOf", { page, total: totalPages })}</span>
               <Link
                 href={pageHref(page + 1)}
                 aria-disabled={page >= totalPages}
                 className={
                   page >= totalPages
-                    ? "pointer-events-none rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
-                    : "rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
+                    ? "pointer-events-none flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
+                    : "flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
                 }
               >
-                Next →
+                {t("common.next")}
+                <ArrowRightIcon className="h-4 w-4" />
               </Link>
             </div>
           ) : null}

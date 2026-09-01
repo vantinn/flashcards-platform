@@ -11,6 +11,8 @@ import { Loading } from "@/components/ui/loading";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/error-message";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import type { CardRating, Flashcard } from "@/types/flashcard";
 
 export interface StudyPlayerProps {
@@ -31,6 +33,7 @@ function shuffleArray<T>(items: T[]): T[] {
 }
 
 export function StudyPlayer({ setId, setTitle, cards, language = null }: StudyPlayerProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [order, setOrder] = useState<Flashcard[]>(cards);
   const [index, setIndex] = useState(0);
@@ -53,11 +56,11 @@ export function StudyPlayer({ setId, setTitle, cards, language = null }: StudyPl
       const session = await api.post<{ id: string }>("/study-sessions", { setId });
       setSessionId(session.id);
     } catch (err) {
-      setStartError(err instanceof ApiError ? err.message : "Could not start a study session.");
+      setStartError(err instanceof ApiError ? getErrorMessage(err, t) : t("study.couldNotStart"));
     } finally {
       setStarting(false);
     }
-  }, [setId]);
+  }, [setId, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment on fetchSession above
@@ -203,20 +206,20 @@ export function StudyPlayer({ setId, setTitle, cards, language = null }: StudyPl
   }, [completed, starting, flipped, goNext, goPrevious, router, setId]);
 
   if (starting) {
-    return <Loading label="Starting study session..." />;
+    return <Loading label={t("study.starting")} />;
   }
 
   if (startError) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
-        <ErrorState title="Couldn't start studying" description={startError} />
-        <Button onClick={retryStart}>Try again</Button>
+        <ErrorState title={t("study.couldNotStartTitle")} description={startError} />
+        <Button onClick={retryStart}>{t("study.tryAgain")}</Button>
       </div>
     );
   }
 
   if (completing) {
-    return <Loading label="Saving your progress..." />;
+    return <Loading label={t("study.savingProgress")} />;
   }
 
   if (completed) {
@@ -234,7 +237,7 @@ export function StudyPlayer({ setId, setTitle, cards, language = null }: StudyPl
   }
 
   if (!currentCard) {
-    return <ErrorState title="This set has no cards to study" />;
+    return <ErrorState title={t("study.noCardsToStudyTitle")} />;
   }
 
   return (
@@ -254,7 +257,7 @@ export function StudyPlayer({ setId, setTitle, cards, language = null }: StudyPl
         <AnswerButtons onAnswer={handleAnswer} />
       ) : (
         <p className="text-sm text-text-muted" aria-live="polite">
-          Flip the card to answer
+          {t("study.flipHint")}
         </p>
       )}
       <StudyControls
@@ -264,7 +267,7 @@ export function StudyPlayer({ setId, setTitle, cards, language = null }: StudyPl
         onRestart={handleRestart}
         onExit={handleExit}
         canGoPrevious={index > 0}
-        nextLabel={index === order.length - 1 ? "Finish" : "Next"}
+        isLastCard={index === order.length - 1}
       />
     </div>
   );

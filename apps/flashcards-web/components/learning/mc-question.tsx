@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import { PronunciationButton } from "@/components/pronunciation/pronunciation-button";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface McQuestionProps {
   front: string;
@@ -15,6 +16,7 @@ export interface McQuestionProps {
 }
 
 export function McQuestion({ front, choices, disabled, selectedText, correctAnswer, onSelect, language = null }: McQuestionProps) {
+  const { t } = useI18n();
   const showFeedback = correctAnswer !== null;
 
   return (
@@ -24,7 +26,7 @@ export function McQuestion({ front, choices, disabled, selectedText, correctAnsw
           <p className="text-xl font-semibold text-text-dark sm:text-2xl">{front}</p>
           <PronunciationButton text={front} language={language} compact />
         </div>
-        <p className="mt-2 text-sm text-text-muted">{front} có nghĩa là gì?</p>
+        <p className="mt-2 text-sm text-text-muted">{t("learning.whatDoesXMean", { front })}</p>
       </div>
       <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
         {choices.map((choice, index) => {

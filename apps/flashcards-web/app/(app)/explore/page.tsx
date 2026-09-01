@@ -5,10 +5,13 @@ import { SearchBar } from "@/components/ui/search-bar";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ArrowLeftIcon, ArrowRightIcon } from "@/components/ui/icons";
 import { FlashcardSetCard } from "@/components/flashcards/flashcard-set-card";
 import { serverApi, ApiError } from "@/lib/api-server";
-import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
-import type { FlashcardSet, SetLanguage } from "@/types/flashcard";
+import { SET_LANGUAGES, setLanguageLabel } from "@/lib/set-language";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
+import type { FlashcardSet } from "@/types/flashcard";
 import type { PaginatedResult } from "@/types/pagination";
 
 const PAGE_SIZE = 12;
@@ -47,6 +50,7 @@ export default async function ExplorePage({
 }) {
   const { q = "", category = "", page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
+  const t = createTranslator(getDictionary(await getLocale()));
 
   const result = await searchPublicSets({ q, category, page });
   const totalPages = Math.max(1, Math.ceil(result.total / result.limit));
@@ -62,27 +66,27 @@ export default async function ExplorePage({
   return (
     <PageContainer className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-text-dark">Explore public sets</h1>
-        <p className="text-text-muted">Discover flashcard sets shared by other learners.</p>
+        <h1 className="text-2xl font-bold text-text-dark">{t("explore.title")}</h1>
+        <p className="text-text-muted">{t("explore.subtitle")}</p>
       </div>
 
       <form action="/explore" className="flex flex-wrap gap-2">
-        <SearchBar defaultValue={q} placeholder="Search public sets..." className="max-w-sm" />
+        <SearchBar defaultValue={q} placeholder={t("explore.searchPlaceholder")} className="max-w-sm" />
         <Select name="category" defaultValue={category} className="max-w-[180px]">
-          <option value="">Tất cả danh mục</option>
-          {(Object.keys(SET_LANGUAGE_LABELS) as SetLanguage[]).map((value) => (
+          <option value="">{t("category.allCategories")}</option>
+          {SET_LANGUAGES.map((value) => (
             <option key={value} value={value}>
-              {SET_LANGUAGE_LABELS[value]}
+              {setLanguageLabel(value, t)}
             </option>
           ))}
         </Select>
-        <Button type="submit">Search</Button>
+        <Button type="submit">{t("explore.search")}</Button>
       </form>
 
       {result.items.length === 0 ? (
         <EmptyState
-          title="No public sets found"
-          description={q || category ? "Nothing matched your filters yet." : "No public sets have been published yet."}
+          title={t("explore.noResultsTitle")}
+          description={q || category ? t("explore.noResultsFiltered") : t("explore.noResultsEmpty")}
         />
       ) : (
         <>
@@ -99,25 +103,25 @@ export default async function ExplorePage({
                 aria-disabled={page <= 1}
                 className={
                   page <= 1
-                    ? "pointer-events-none rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
-                    : "rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
+                    ? "pointer-events-none flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
+                    : "flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
                 }
               >
-                ← Previous
+                <ArrowLeftIcon className="h-4 w-4" />
+                {t("common.previous")}
               </Link>
-              <span className="text-sm text-text-muted">
-                Page {page} of {totalPages}
-              </span>
+              <span className="text-sm text-text-muted">{t("explore.pageOf", { page, total: totalPages })}</span>
               <Link
                 href={pageHref(page + 1)}
                 aria-disabled={page >= totalPages}
                 className={
                   page >= totalPages
-                    ? "pointer-events-none rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
-                    : "rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
+                    ? "pointer-events-none flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-muted opacity-40"
+                    : "flex items-center gap-1 rounded-card px-4 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
                 }
               >
-                Next →
+                {t("common.next")}
+                <ArrowRightIcon className="h-4 w-4" />
               </Link>
             </div>
           ) : null}

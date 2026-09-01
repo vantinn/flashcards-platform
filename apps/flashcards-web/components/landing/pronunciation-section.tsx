@@ -1,7 +1,11 @@
 import { PageContainer } from "@/components/ui/page-container";
 import { Reveal } from "@/components/landing/reveal";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
 
-export function PronunciationSection() {
+export async function PronunciationSection() {
+  const t = createTranslator(getDictionary(await getLocale()));
+
   return (
     <PageContainer className="py-16 sm:py-24">
       <Reveal className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -21,13 +25,9 @@ export function PronunciationSection() {
         </div>
 
         <div className="flex flex-col items-start gap-4 text-left">
-          <span className="text-sm font-semibold uppercase tracking-wide text-primary">Pronunciation</span>
-          <h2 className="text-3xl font-bold text-text-dark sm:text-4xl">See it. Hear it. Practice it.</h2>
-          <p className="max-w-md text-text-muted">
-            For Tiếng Anh and Tiếng Trung flashcards, use your browser or device&apos;s own voice
-            to hear the word and practice pronunciation while you study. Tự do sets are for
-            anything else, without a pronunciation button.
-          </p>
+          <span className="text-sm font-semibold uppercase tracking-wide text-primary">{t("landing.pronunciationEyebrow")}</span>
+          <h2 className="text-3xl font-bold text-text-dark sm:text-4xl">{t("landing.pronunciationTitle")}</h2>
+          <p className="max-w-md text-text-muted">{t("landing.pronunciationDesc")}</p>
         </div>
       </Reveal>
     </PageContainer>

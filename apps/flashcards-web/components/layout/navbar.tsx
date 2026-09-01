@@ -1,20 +1,25 @@
 import Link from "next/link";
 import { UserMenu } from "./user-menu";
 import { MobileNav } from "./mobile-nav";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 import type { PublicUser } from "@/types/flashcard";
-
-const publicLinks: { href: string; label: string }[] = [];
-const authedLinks = [
-  { href: "/explore", label: "Explore" },
-  { href: "/sets", label: "My Sets" },
-  { href: "/dashboard", label: "Dashboard" },
-];
 
 export interface NavbarProps {
   user?: PublicUser | null;
 }
 
-export function Navbar({ user = null }: NavbarProps) {
+export async function Navbar({ user = null }: NavbarProps) {
+  const dict = getDictionary(await getLocale());
+
+  const publicLinks: { href: string; label: string }[] = [];
+  const authedLinks = [
+    { href: "/explore", label: dict.nav.explore },
+    { href: "/sets", label: dict.nav.mySets },
+    { href: "/dashboard", label: dict.nav.dashboard },
+  ];
+
   // The whole app is authenticated-only, so signed-out visitors get no
   // application nav links at all — just Log in / Sign up. Beyond that being
   // the correct product behavior, it also avoids a real bug: Next.js
@@ -31,7 +36,7 @@ export function Navbar({ user = null }: NavbarProps) {
         <div className="flex items-center gap-2">
           <MobileNav links={links} />
           <Link href="/" className="text-lg font-bold text-primary">
-            Flashcards
+            {dict.nav.brand}
           </Link>
         </div>
         <nav className="hidden items-center gap-6 text-sm font-medium text-text-dark sm:flex">
@@ -42,6 +47,7 @@ export function Navbar({ user = null }: NavbarProps) {
           ))}
         </nav>
         <div className="flex items-center gap-3">
+          <LanguageSwitcher className="hidden sm:inline-flex" />
           {user ? (
             <UserMenu user={user} />
           ) : (
@@ -50,13 +56,13 @@ export function Navbar({ user = null }: NavbarProps) {
                 href="/login"
                 className="rounded-card px-3 py-2 text-sm font-medium text-text-dark hover:bg-black/5"
               >
-                Log in
+                {dict.nav.login}
               </Link>
               <Link
                 href="/register"
                 className="rounded-card bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark"
               >
-                Sign up
+                {dict.nav.signUp}
               </Link>
             </>
           )}

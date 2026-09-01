@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FlashcardSetCard } from "@/components/flashcards/flashcard-set-card";
 import { MasteryBreakdown } from "@/components/study/mastery-breakdown";
 import { serverApi, ApiError } from "@/lib/api-server";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, createTranslator, type Translator } from "@/lib/i18n/dictionary";
 import type { PublicUser, FlashcardSet, StudySession, ProgressSummary, StudyStats } from "@/types/flashcard";
 import type { PaginatedResult } from "@/types/pagination";
 
@@ -31,19 +33,23 @@ async function loadDashboard() {
   }
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: Translator): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.round(diffMs / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("dashboard.justNow");
+  if (minutes < 60) return t("dashboard.minutesAgo", { minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("dashboard.hoursAgo", { hours });
   const days = Math.round(hours / 24);
-  return `${days}d ago`;
+  return t("dashboard.daysAgo", { days });
 }
 
 export default async function DashboardPage() {
-  const { user, recentSets, history, progress, studyStats } = await loadDashboard();
+  const [{ user, recentSets, history, progress, studyStats }, locale] = await Promise.all([
+    loadDashboard(),
+    getLocale(),
+  ]);
+  const t = createTranslator(getDictionary(locale));
 
   const completedSessions = history.filter((session) => session.completedAt);
 
@@ -58,40 +64,45 @@ export default async function DashboardPage() {
   const continueSet = history[0]?.set ?? null;
 
   const stats = [
-    { label: "Today's reviews", value: studyStats.reviewsToday },
-    { label: "Cards due", value: progress.dueCount },
-    { label: "Cards studied", value: progress.totalTracked },
-    { label: "Study streak", value: studyStats.streakDays === 0 ? "—" : `${studyStats.streakDays}d` },
+    { label: t("dashboard.statToday"), value: studyStats.reviewsToday },
+    { label: t("dashboard.statCardsDue"), value: progress.dueCount },
+    { label: t("dashboard.statCardsStudied"), value: progress.totalTracked },
+    {
+      label: t("dashboard.statStreak"),
+      value: studyStats.streakDays === 0 ? t("dashboard.streakEmpty") : t("dashboard.streakUnit", { days: studyStats.streakDays }),
+    },
   ];
 
   return (
     <PageContainer className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-bold text-text-dark">Welcome back, {user.displayName}</h1>
-        <p className="text-text-muted">Here&apos;s a snapshot of your learning activity.</p>
+        <h1 className="text-2xl font-bold text-text-dark">{t("dashboard.welcomeBack", { name: user.displayName })}</h1>
+        <p className="text-text-muted">{t("dashboard.subtitle")}</p>
       </div>
 
       <div className="flex flex-wrap gap-3">
         {continueSet ? (
           <Link href={`/sets/${continueSet.id}/study`}>
-            <Button size="lg">Continue studying</Button>
+            <Button size="lg">{t("dashboard.continueStudying")}</Button>
           </Link>
         ) : null}
         {progress.dueSet ? (
           <Link href={`/sets/${progress.dueSet.id}/study`}>
             <Button size="lg" variant="outline">
-              Review {progress.dueSet.dueCount} due card{progress.dueSet.dueCount === 1 ? "" : "s"}
+              {t(progress.dueSet.dueCount === 1 ? "dashboard.reviewDueCards_one" : "dashboard.reviewDueCards_other", {
+                count: progress.dueSet.dueCount,
+              })}
             </Button>
           </Link>
         ) : null}
         <Link href="/sets/create">
           <Button size="lg" variant="outline">
-            Create set
+            {t("dashboard.createSet")}
           </Button>
         </Link>
         <Link href="/explore">
           <Button size="lg" variant="outline">
-            Explore sets
+            {t("dashboard.exploreSets")}
           </Button>
         </Link>
       </div>
@@ -108,25 +119,23 @@ export default async function DashboardPage() {
       </div>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-text-dark">Learning progress</h2>
+        <h2 className="text-lg font-semibold text-text-dark">{t("dashboard.learningProgress")}</h2>
         {progress.totalTracked === 0 ? (
-          <p className="text-sm text-text-muted">
-            Answer cards during a study session to start tracking progress here.
-          </p>
+          <p className="text-sm text-text-muted">{t("dashboard.noProgressYet")}</p>
         ) : (
           <MasteryBreakdown learningCount={progress.learningCount} masteredCount={progress.masteredCount} />
         )}
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-text-dark">Recently studied</h2>
+        <h2 className="text-lg font-semibold text-text-dark">{t("dashboard.recentlyStudied")}</h2>
         {recentlyStudied.length === 0 ? (
           <EmptyState
-            title="No study sessions yet"
-            description="Start studying a set to see your recent activity here."
+            title={t("dashboard.noSessionsTitle")}
+            description={t("dashboard.noSessionsDesc")}
             action={
               <Link href="/sets">
-                <Button variant="outline">Browse my sets</Button>
+                <Button variant="outline">{t("dashboard.browseMySets")}</Button>
               </Link>
             }
           />
@@ -140,9 +149,9 @@ export default async function DashboardPage() {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-text-dark">Recent activity</h2>
+        <h2 className="text-lg font-semibold text-text-dark">{t("dashboard.recentActivity")}</h2>
         {history.length === 0 ? (
-          <p className="text-sm text-text-muted">No activity yet.</p>
+          <p className="text-sm text-text-muted">{t("dashboard.noActivity")}</p>
         ) : (
           <Card>
             <ul className="divide-y divide-border">
@@ -154,11 +163,11 @@ export default async function DashboardPage() {
                     </Link>
                     <p className="text-xs text-text-muted">
                       {session.completedAt
-                        ? `Completed · ${session.correctCount}/${session.cardsStudied} correct`
-                        : "In progress"}
+                        ? t("dashboard.completedCorrect", { correct: session.correctCount, total: session.cardsStudied })
+                        : t("learning.inProgress")}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-text-muted">{timeAgo(session.startedAt)}</span>
+                  <span className="shrink-0 text-xs text-text-muted">{timeAgo(session.startedAt, t)}</span>
                 </li>
               ))}
             </ul>
@@ -168,18 +177,18 @@ export default async function DashboardPage() {
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-dark">My sets</h2>
+          <h2 className="text-lg font-semibold text-text-dark">{t("dashboard.mySets")}</h2>
           <Link href="/sets" className="text-sm font-medium text-primary hover:underline">
-            View all{recentSets.total > 0 ? ` (${recentSets.total})` : ""}
+            {recentSets.total > 0 ? t("dashboard.viewAllWithCount", { count: recentSets.total }) : t("dashboard.viewAll")}
           </Link>
         </div>
         {recentSets.items.length === 0 ? (
           <EmptyState
-            title="No flashcard sets yet"
-            description="Create your first set to start studying."
+            title={t("sets.noSetsTitle")}
+            description={t("sets.noSetsDesc")}
             action={
               <Link href="/sets/create">
-                <Button>Create a set</Button>
+                <Button>{t("sets.createASet")}</Button>
               </Link>
             }
           />

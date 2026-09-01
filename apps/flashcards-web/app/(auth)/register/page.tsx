@@ -11,6 +11,7 @@ import { SuccessIcon } from "@/components/ui/success-icon";
 import { api } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/error-message";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import type { PublicUser } from "@/types/flashcard";
 
 interface PendingRegistration {
@@ -49,6 +50,7 @@ function RegisterForm({
   loginHref: string;
   onRegistered: (pending: PendingRegistration) => void;
 }) {
+  const { t } = useI18n();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,7 +66,7 @@ function RegisterForm({
       const result = await api.post<PendingRegistration>("/auth/register", { displayName, email, password });
       onRegistered(result);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err, t));
       setSubmitting(false);
     }
   }
@@ -73,14 +75,14 @@ function RegisterForm({
     <Card className="w-full max-w-sm">
       <CardBody className="flex flex-col gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-text-dark">Create your account</h1>
-          <p className="text-sm text-text-muted">Start building flashcard sets in minutes.</p>
+          <h1 className="text-xl font-semibold text-text-dark">{t("auth.register.title")}</h1>
+          <p className="text-sm text-text-muted">{t("auth.register.subtitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="register-name" className="text-sm font-medium text-text-dark">
-              Full name
+              {t("auth.register.fullName")}
             </label>
             <Input
               id="register-name"
@@ -95,7 +97,7 @@ function RegisterForm({
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="register-email" className="text-sm font-medium text-text-dark">
-              Email
+              {t("auth.register.email")}
             </label>
             <Input
               id="register-email"
@@ -109,7 +111,7 @@ function RegisterForm({
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="register-password" className="text-sm font-medium text-text-dark">
-              Password
+              {t("auth.register.password")}
             </label>
             <Input
               id="register-password"
@@ -121,7 +123,7 @@ function RegisterForm({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-            <p className="text-xs text-text-muted">At least 8 characters.</p>
+            <p className="text-xs text-text-muted">{t("auth.register.passwordHint")}</p>
           </div>
           {error ? (
             <p className="text-sm text-danger" role="alert">
@@ -129,14 +131,14 @@ function RegisterForm({
             </p>
           ) : null}
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Creating account..." : "Sign up"}
+            {submitting ? t("auth.register.submitting") : t("auth.register.submit")}
           </Button>
         </form>
 
         <p className="text-center text-sm text-text-muted">
-          Already have an account?{" "}
+          {t("auth.register.haveAccount")}
           <Link href={loginHref} className="font-medium text-primary hover:underline">
-            Log in
+            {t("auth.register.logIn")}
           </Link>
         </p>
       </CardBody>
@@ -145,6 +147,7 @@ function RegisterForm({
 }
 
 function VerifyOtpForm({ pending, onBack }: { pending: PendingRegistration; onBack: () => void }) {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const [otp, setOtp] = useState("");
   const [otpBoxKey, setOtpBoxKey] = useState(0);
@@ -180,7 +183,7 @@ function VerifyOtpForm({ pending, onBack }: { pending: PendingRegistration; onBa
       await api.post<PublicUser>("/auth/verify-registration", { email: pending.email, otp });
       setVerified(true);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err, t));
       setSubmitting(false);
       setOtp("");
       setOtpBoxKey((key) => key + 1); // remounts OtpInput, clearing the boxes for a retry
@@ -194,12 +197,12 @@ function VerifyOtpForm({ pending, onBack }: { pending: PendingRegistration; onBa
     setResendMessage(null);
     try {
       await api.post("/auth/resend-otp", { email: pending.email, purpose: "REGISTRATION" });
-      setResendMessage("A new code has been sent.");
+      setResendMessage(t("auth.register.resent"));
       setCooldown(pending.resendAvailableInSeconds);
       setOtp("");
       setOtpBoxKey((key) => key + 1);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err, t));
     } finally {
       setResending(false);
     }
@@ -210,8 +213,8 @@ function VerifyOtpForm({ pending, onBack }: { pending: PendingRegistration; onBa
       <Card className="w-full max-w-sm">
         <CardBody className="flex flex-col items-center gap-3 py-8 text-center">
           <SuccessIcon />
-          <h1 className="text-xl font-semibold text-text-dark">Email verified</h1>
-          <p className="text-sm text-text-muted">Redirecting you now...</p>
+          <h1 className="text-xl font-semibold text-text-dark">{t("auth.register.verified")}</h1>
+          <p className="text-sm text-text-muted">{t("auth.register.redirecting")}</p>
         </CardBody>
       </Card>
     );
@@ -221,19 +224,18 @@ function VerifyOtpForm({ pending, onBack }: { pending: PendingRegistration; onBa
     <Card className="w-full max-w-sm">
       <CardBody className="flex flex-col gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-text-dark">Check your email</h1>
+          <h1 className="text-xl font-semibold text-text-dark">{t("auth.register.checkEmail")}</h1>
           <p className="text-sm text-text-muted">
-            We sent a 6-digit code to <span className="font-medium text-text-dark">{pending.email}</span>. It expires
-            in {pending.expiresInMinutes} minutes.
+            {t("auth.register.sentCode", { email: pending.email, minutes: pending.expiresInMinutes })}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-text-dark">Verification code</span>
+            <span className="text-sm font-medium text-text-dark">{t("auth.register.codeLabel")}</span>
             <OtpInput
               key={otpBoxKey}
-              label="Verification code, 6 digits"
+              label={t("auth.register.codeAriaLabel")}
               disabled={submitting}
               onChange={setOtp}
             />
@@ -249,13 +251,13 @@ function VerifyOtpForm({ pending, onBack }: { pending: PendingRegistration; onBa
             </p>
           ) : null}
           <Button type="submit" disabled={submitting || otp.length !== 6}>
-            {submitting ? "Verifying..." : "Verify email"}
+            {submitting ? t("auth.register.verifying") : t("auth.register.verify")}
           </Button>
         </form>
 
         <div className="flex items-center justify-between text-sm">
           <button type="button" onClick={onBack} className="font-medium text-text-muted hover:underline">
-            Use a different email
+            {t("auth.register.useDifferentEmail")}
           </button>
           <button
             type="button"
@@ -263,7 +265,11 @@ function VerifyOtpForm({ pending, onBack }: { pending: PendingRegistration; onBa
             disabled={resending || cooldown > 0}
             className="font-medium text-primary hover:underline disabled:pointer-events-none disabled:text-text-muted"
           >
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : resending ? "Sending..." : "Resend code"}
+            {cooldown > 0
+              ? t("auth.register.resendIn", { seconds: cooldown })
+              : resending
+                ? t("auth.register.resending")
+                : t("auth.register.resendCode")}
           </button>
         </div>
       </CardBody>
