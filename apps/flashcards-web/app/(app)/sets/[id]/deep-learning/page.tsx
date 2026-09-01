@@ -5,6 +5,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LearningPlayer } from "@/components/learning/learning-player";
 import { serverApi, ApiError } from "@/lib/api-server";
+import { speechLangFor } from "@/lib/set-language";
 import type { FlashcardSetDetail } from "@/types/flashcard";
 
 async function loadSet(id: string) {
@@ -48,6 +49,7 @@ export default async function DeepLearningSetPage({ params }: { params: Promise<
         icon="🧠"
         title="Học nhớ sâu"
         completionMessage="Bạn đã hoàn thành chế độ Học nhớ sâu cho bộ thẻ này."
+        language={speechLangFor(set.language)}
       />
     </PageContainer>
   );

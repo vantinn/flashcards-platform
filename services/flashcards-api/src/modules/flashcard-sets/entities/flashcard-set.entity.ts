@@ -19,6 +19,15 @@ export enum SetVisibility {
   PUBLIC = 'public',
 }
 
+// Drives which Web Speech API voice study/cram/deep-learning pronunciation
+// buttons use for this set's cards — distinct from `category` (a free-text
+// topic label) to avoid colliding with that existing field.
+export enum SetLanguage {
+  ENGLISH = 'english',
+  CHINESE = 'chinese',
+  FREE = 'free',
+}
+
 @Entity('flashcard_sets')
 export class FlashcardSet {
   @PrimaryGeneratedColumn('uuid')
@@ -49,6 +58,10 @@ export class FlashcardSet {
   @Index()
   @Column({ type: 'enum', enum: SetVisibility, default: SetVisibility.PRIVATE })
   visibility: SetVisibility;
+
+  @Index()
+  @Column({ type: 'enum', enum: SetLanguage, default: SetLanguage.FREE })
+  language: SetLanguage;
 
   @Column({ name: 'card_count', type: 'int', default: 0 })
   cardCount: number;

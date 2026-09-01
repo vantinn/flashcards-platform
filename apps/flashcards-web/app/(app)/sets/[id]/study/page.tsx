@@ -5,6 +5,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StudyPlayer } from "@/components/study/study-player";
 import { serverApi, ApiError } from "@/lib/api-server";
+import { speechLangFor } from "@/lib/set-language";
 import type { FlashcardSetDetail } from "@/types/flashcard";
 
 async function loadSet(id: string) {
@@ -41,7 +42,7 @@ export default async function StudySetPage({ params }: { params: Promise<{ id: s
 
   return (
     <PageContainer className="flex flex-1 flex-col">
-      <StudyPlayer setId={set.id} setTitle={set.title} cards={set.cards} />
+      <StudyPlayer setId={set.id} setTitle={set.title} cards={set.cards} language={speechLangFor(set.language)} />
     </PageContainer>
   );
 }

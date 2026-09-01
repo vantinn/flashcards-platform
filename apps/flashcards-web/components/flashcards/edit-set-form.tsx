@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api-client";
-import type { FlashcardSet, FlashcardSetDetail, SetVisibility } from "@/types/flashcard";
+import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
+import type { FlashcardSet, FlashcardSetDetail, SetLanguage, SetVisibility } from "@/types/flashcard";
 
 export interface EditSetFormProps {
   set: FlashcardSetDetail;
@@ -25,6 +26,7 @@ export function EditSetForm({ set }: EditSetFormProps) {
   const [title, setTitle] = useState(set.title);
   const [description, setDescription] = useState(set.description ?? "");
   const [category, setCategory] = useState(set.category ?? "");
+  const [language, setLanguage] = useState<SetLanguage>(set.language);
   const [visibility, setVisibility] = useState<SetVisibility>(set.visibility);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -38,6 +40,7 @@ export function EditSetForm({ set }: EditSetFormProps) {
         title,
         description: description || undefined,
         category: category || undefined,
+        language,
         visibility,
       });
       router.push(`/sets/${set.id}`);
@@ -87,6 +90,19 @@ export function EditSetForm({ set }: EditSetFormProps) {
               value={category}
               onChange={(event) => setCategory(event.target.value)}
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-dark" htmlFor="language">
+              Danh mục <span className="font-normal text-text-muted">(optional)</span>
+            </label>
+            <Select id="language" value={language} onChange={(event) => setLanguage(event.target.value as SetLanguage)}>
+              {(Object.keys(SET_LANGUAGE_LABELS) as SetLanguage[]).map((value) => (
+                <option key={value} value={value}>
+                  {SET_LANGUAGE_LABELS[value]}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="flex flex-col gap-1.5">

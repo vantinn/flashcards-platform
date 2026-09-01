@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FlashcardSetsService } from './flashcard-sets.service.js';
-import { FlashcardSet, SetVisibility } from './entities/flashcard-set.entity.js';
+import { FlashcardSet, SetLanguage, SetVisibility } from './entities/flashcard-set.entity.js';
 import { Flashcard } from '../flashcards/entities/flashcard.entity.js';
 import { CacheService } from '../../redis/cache.service.js';
 
@@ -15,6 +15,7 @@ function buildSet(overrides: Partial<FlashcardSet> = {}): FlashcardSet {
     coverImageUrl: null,
     creator: { id: 'owner-1' } as FlashcardSet['creator'],
     category: null,
+    language: SetLanguage.FREE,
     visibility: SetVisibility.PRIVATE,
     cardCount: 0,
     studyCount: 0,
@@ -125,6 +126,16 @@ describe('FlashcardSetsService', () => {
       expect(result.creator).toEqual({ id: 'owner-1' });
       expect(cache.deleteByPrefix).toHaveBeenCalledWith('search:');
     });
+
+    it('defaults language to FREE when not provided', async () => {
+      const result = await service.create('owner-1', { title: 'New Set' });
+      expect(result.language).toBe(SetLanguage.FREE);
+    });
+
+    it('persists an explicit language', async () => {
+      const result = await service.create('owner-1', { title: 'New Set', language: SetLanguage.ENGLISH });
+      expect(result.language).toBe(SetLanguage.ENGLISH);
+    });
   });
 
   describe('update / remove', () => {
@@ -138,6 +149,18 @@ describe('FlashcardSetsService', () => {
       repo.findOne.mockResolvedValue(buildSet());
       await service.remove('set-1', 'owner-1');
       expect(cache.deleteByPrefix).toHaveBeenCalledWith('search:');
+    });
+
+    it('changes language on an existing set', async () => {
+      repo.findOne.mockResolvedValue(buildSet({ language: SetLanguage.FREE }));
+      const result = await service.update('set-1', 'owner-1', { language: SetLanguage.CHINESE });
+      expect(result.language).toBe(SetLanguage.CHINESE);
+    });
+
+    it('leaves language unchanged when not included in the update payload', async () => {
+      repo.findOne.mockResolvedValue(buildSet({ language: SetLanguage.ENGLISH }));
+      const result = await service.update('set-1', 'owner-1', { title: 'Renamed' });
+      expect(result.language).toBe(SetLanguage.ENGLISH);
     });
   });
 
@@ -166,6 +189,7 @@ describe('FlashcardSetsService', () => {
         buildSet({
           visibility: SetVisibility.PUBLIC,
           title: 'Spanish Basics',
+          language: SetLanguage.ENGLISH,
           cards: [
             { id: 'card-2', position: 1, front: 'Gracias', back: 'Thank you' } as Flashcard,
             { id: 'card-1', position: 0, front: 'Hola', back: 'Hello' } as Flashcard,
@@ -178,6 +202,7 @@ describe('FlashcardSetsService', () => {
       expect(repo.manager.transaction).toHaveBeenCalledTimes(1);
       expect(result.title).toBe('Spanish Basics (copy)');
       expect(result.visibility).toBe(SetVisibility.PRIVATE);
+      expect(result.language).toBe(SetLanguage.ENGLISH);
       expect(result.creator).toEqual({ id: 'someone-else' });
 
       // Second save() call inside the transaction is the cards array.
