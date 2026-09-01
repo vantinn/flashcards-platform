@@ -5,11 +5,15 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ZapIcon, BrainIcon } from "@/components/ui/icons";
 import { SetActions } from "@/components/flashcards/set-actions";
 import { ModeProgressCard } from "@/components/learning/mode-progress-card";
 import { serverApi, ApiError } from "@/lib/api-server";
 import { getCurrentUser } from "@/lib/current-user";
-import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
+import { setLanguageLabel } from "@/lib/set-language";
+import { setVisibilityLabel } from "@/lib/set-visibility";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
 import type { FlashcardSetDetail } from "@/types/flashcard";
 import type { LearningSessionSummary } from "@/types/learning";
 
@@ -39,7 +43,8 @@ function countDistinctAnswers(cards: { back: string }[]): number {
 
 export default async function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [set, currentUser] = await Promise.all([loadSet(id), getCurrentUser()]);
+  const [set, currentUser, locale] = await Promise.all([loadSet(id), getCurrentUser(), getLocale()]);
+  const t = createTranslator(getDictionary(locale));
   const isOwner = currentUser?.id === set.creator.id;
 
   let learningSessions: LearningSessionSummary[] = [];
@@ -54,6 +59,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
   const cramSession = learningSessions.find((session) => session.mode === "cram") ?? null;
   const deepLearningSession = learningSessions.find((session) => session.mode === "deep_learning") ?? null;
   const hasEnoughDistinctAnswers = countDistinctAnswers(set.cards) >= 4;
+  const ineligibleMessage = hasEnoughDistinctAnswers ? undefined : t("cram.ineligibleMessage");
 
   return (
     <PageContainer className="flex flex-col gap-6">
@@ -61,12 +67,17 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-text-dark">{set.title}</h1>
-            <Badge variant={set.visibility === "public" ? "success" : "default"}>{set.visibility}</Badge>
-            <Badge variant="accent">🏷 {SET_LANGUAGE_LABELS[set.language]}</Badge>
+            <Badge variant={set.visibility === "public" ? "success" : "default"}>
+              {setVisibilityLabel(set.visibility, t)}
+            </Badge>
+            <Badge variant="accent">{setLanguageLabel(set.language, t)}</Badge>
           </div>
           {set.description ? <p className="text-text-muted">{set.description}</p> : null}
           <p className="mt-1 text-sm text-text-muted">
-            {set.cardCount} cards · by {isOwner ? "you" : set.creator.displayName}
+            {t("sets.cardsByLine", {
+              count: set.cardCount,
+              owner: isOwner ? t("sets.byYou") : set.creator.displayName,
+            })}
           </p>
         </div>
 
@@ -75,7 +86,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         ) : currentUser ? (
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Link href={`/sets/${set.id}/study`}>
-              <Button disabled={set.cardCount === 0}>Start studying</Button>
+              <Button disabled={set.cardCount === 0}>{t("sets.startStudying")}</Button>
             </Link>
           </div>
         ) : null}
@@ -85,20 +96,20 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ModeProgressCard
             href={`/sets/${set.id}/cram`}
-            icon="⚡"
-            title="Học nhồi nhét"
-            description="Học cấp tốc để thi"
+            icon={<ZapIcon className="h-5 w-5" />}
+            title={t("cram.title")}
+            description={t("cram.description")}
             eligible={hasEnoughDistinctAnswers}
-            ineligibleMessage={hasEnoughDistinctAnswers ? undefined : "Cần ít nhất 4 thẻ có đáp án khác nhau"}
+            ineligibleMessage={ineligibleMessage}
             session={cramSession}
           />
           <ModeProgressCard
             href={`/sets/${set.id}/deep-learning`}
-            icon="🧠"
-            title="Học nhớ sâu"
-            description="Kết hợp trắc nghiệm và tự luận"
+            icon={<BrainIcon className="h-5 w-5" />}
+            title={t("deepLearning.title")}
+            description={t("deepLearning.description")}
             eligible={hasEnoughDistinctAnswers}
-            ineligibleMessage={hasEnoughDistinctAnswers ? undefined : "Cần ít nhất 4 thẻ có đáp án khác nhau"}
+            ineligibleMessage={ineligibleMessage}
             session={deepLearningSession}
           />
         </div>
@@ -106,8 +117,8 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
 
       {set.cards.length === 0 ? (
         <EmptyState
-          title="This set has no cards yet"
-          description={isOwner ? "Add your first flashcard to get started." : "Check back later."}
+          title={t("sets.noCardsTitle")}
+          description={isOwner ? t("sets.addFirstCardOwner") : t("sets.addFirstCardOther")}
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -116,13 +127,13 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
               <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    Front
+                    {t("sets.front")}
                   </p>
                   <p className="text-text-dark">{card.front}</p>
                 </div>
                 <div>
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    Back
+                    {t("sets.back")}
                   </p>
                   <p className="text-text-dark">{card.back}</p>
                 </div>

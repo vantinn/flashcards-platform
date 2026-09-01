@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent } from "react";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 interface OtpInputProps {
   length?: number;
@@ -25,6 +26,7 @@ interface OtpInputProps {
  * after a rejected code) to clear it for a retry.
  */
 export function OtpInput({ length = 6, onChange, disabled, label }: OtpInputProps) {
+  const { t } = useI18n();
   const [digits, setDigits] = useState<string[]>(() => Array(length).fill(""));
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -102,7 +104,7 @@ export function OtpInput({ length = 6, onChange, disabled, label }: OtpInputProp
           inputMode="numeric"
           pattern="[0-9]*"
           autoComplete={index === 0 ? "one-time-code" : "off"}
-          aria-label={`Digit ${index + 1} of ${length}`}
+          aria-label={t("common.digitXOfY", { index: index + 1, total: length })}
           value={digit}
           disabled={disabled}
           onChange={(event) => handleChange(index, event)}

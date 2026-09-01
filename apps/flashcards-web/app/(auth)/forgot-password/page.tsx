@@ -9,6 +9,7 @@ import { OtpInput } from "@/components/ui/otp-input";
 import { SuccessIcon } from "@/components/ui/success-icon";
 import { api } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/error-message";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 // The backend deliberately never tells us whether a resend is actually
 // possible (that would leak account existence — see AuthService.forgotPassword),
@@ -55,6 +56,7 @@ export default function ForgotPasswordPage() {
 }
 
 function EmailStep({ onSubmitted }: { onSubmitted: (email: string) => void }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -68,7 +70,7 @@ function EmailStep({ onSubmitted }: { onSubmitted: (email: string) => void }) {
       await api.post("/auth/forgot-password", { email });
       onSubmitted(email);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err, t));
       setSubmitting(false);
     }
   }
@@ -77,14 +79,14 @@ function EmailStep({ onSubmitted }: { onSubmitted: (email: string) => void }) {
     <Card className="w-full max-w-sm">
       <CardBody className="flex flex-col gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-text-dark">Reset your password</h1>
-          <p className="text-sm text-text-muted">Enter your email and we&apos;ll send you a verification code.</p>
+          <h1 className="text-xl font-semibold text-text-dark">{t("auth.forgotPassword.title")}</h1>
+          <p className="text-sm text-text-muted">{t("auth.forgotPassword.subtitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="forgot-email" className="text-sm font-medium text-text-dark">
-              Email
+              {t("auth.forgotPassword.email")}
             </label>
             <Input
               id="forgot-email"
@@ -102,14 +104,14 @@ function EmailStep({ onSubmitted }: { onSubmitted: (email: string) => void }) {
             </p>
           ) : null}
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Sending..." : "Send code"}
+            {submitting ? t("auth.forgotPassword.submitting") : t("auth.forgotPassword.submit")}
           </Button>
         </form>
 
         <p className="text-center text-sm text-text-muted">
-          Remembered your password?{" "}
+          {t("auth.forgotPassword.rememberedPassword")}
           <Link href="/login" className="font-medium text-primary hover:underline">
-            Log in
+            {t("auth.forgotPassword.logIn")}
           </Link>
         </p>
       </CardBody>
@@ -126,6 +128,7 @@ function OtpStep({
   onVerified: (resetToken: string) => void;
   onBack: () => void;
 }) {
+  const { t } = useI18n();
   const [otp, setOtp] = useState("");
   const [otpBoxKey, setOtpBoxKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +155,7 @@ function OtpStep({
       });
       onVerified(result.resetToken);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err, t));
       setOtp("");
       setOtpBoxKey((key) => key + 1); // remounts OtpInput, clearing the boxes for a retry
     } finally {
@@ -167,12 +170,12 @@ function OtpStep({
     setResendMessage(null);
     try {
       await api.post("/auth/resend-otp", { email, purpose: "PASSWORD_RESET" });
-      setResendMessage("If an account with this email exists, a new code has been sent.");
+      setResendMessage(t("auth.forgotPassword.resent"));
       setCooldown(DEFAULT_RESEND_COOLDOWN_SECONDS);
       setOtp("");
       setOtpBoxKey((key) => key + 1);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err, t));
     } finally {
       setResending(false);
     }
@@ -182,19 +185,16 @@ function OtpStep({
     <Card className="w-full max-w-sm">
       <CardBody className="flex flex-col gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-text-dark">Enter your code</h1>
-          <p className="text-sm text-text-muted">
-            If an account exists for <span className="font-medium text-text-dark">{email}</span>, we sent it a
-            6-digit code.
-          </p>
+          <h1 className="text-xl font-semibold text-text-dark">{t("auth.forgotPassword.enterCode")}</h1>
+          <p className="text-sm text-text-muted">{t("auth.forgotPassword.sentCode", { email })}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-text-dark">Verification code</span>
+            <span className="text-sm font-medium text-text-dark">{t("auth.forgotPassword.codeLabel")}</span>
             <OtpInput
               key={otpBoxKey}
-              label="Verification code, 6 digits"
+              label={t("auth.forgotPassword.codeAriaLabel")}
               disabled={submitting}
               onChange={setOtp}
             />
@@ -210,13 +210,13 @@ function OtpStep({
             </p>
           ) : null}
           <Button type="submit" disabled={submitting || otp.length !== 6}>
-            {submitting ? "Verifying..." : "Verify code"}
+            {submitting ? t("auth.forgotPassword.verifying") : t("auth.forgotPassword.verify")}
           </Button>
         </form>
 
         <div className="flex items-center justify-between text-sm">
           <button type="button" onClick={onBack} className="font-medium text-text-muted hover:underline">
-            Use a different email
+            {t("auth.forgotPassword.useDifferentEmail")}
           </button>
           <button
             type="button"
@@ -224,7 +224,11 @@ function OtpStep({
             disabled={resending || cooldown > 0}
             className="font-medium text-primary hover:underline disabled:pointer-events-none disabled:text-text-muted"
           >
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : resending ? "Sending..." : "Resend code"}
+            {cooldown > 0
+              ? t("auth.forgotPassword.resendIn", { seconds: cooldown })
+              : resending
+                ? t("auth.forgotPassword.resending")
+                : t("auth.forgotPassword.resendCode")}
           </button>
         </div>
       </CardBody>
@@ -233,6 +237,7 @@ function OtpStep({
 }
 
 function ResetStep({ resetToken, onDone }: { resetToken: string; onDone: () => void }) {
+  const { t } = useI18n();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -242,7 +247,7 @@ function ResetStep({ resetToken, onDone }: { resetToken: string; onDone: () => v
     event.preventDefault();
     if (submitting) return;
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("auth.forgotPassword.passwordMismatch"));
       return;
     }
     setSubmitting(true);
@@ -251,7 +256,7 @@ function ResetStep({ resetToken, onDone }: { resetToken: string; onDone: () => v
       await api.post("/auth/reset-password", { resetToken, newPassword, confirmPassword });
       onDone();
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err, t));
       setSubmitting(false);
     }
   }
@@ -260,14 +265,14 @@ function ResetStep({ resetToken, onDone }: { resetToken: string; onDone: () => v
     <Card className="w-full max-w-sm">
       <CardBody className="flex flex-col gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-text-dark">Choose a new password</h1>
-          <p className="text-sm text-text-muted">Your code has been verified.</p>
+          <h1 className="text-xl font-semibold text-text-dark">{t("auth.forgotPassword.resetTitle")}</h1>
+          <p className="text-sm text-text-muted">{t("auth.forgotPassword.resetSubtitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="new-password" className="text-sm font-medium text-text-dark">
-              New password
+              {t("auth.forgotPassword.newPassword")}
             </label>
             <Input
               id="new-password"
@@ -279,11 +284,11 @@ function ResetStep({ resetToken, onDone }: { resetToken: string; onDone: () => v
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
             />
-            <p className="text-xs text-text-muted">At least 8 characters.</p>
+            <p className="text-xs text-text-muted">{t("auth.forgotPassword.passwordHint")}</p>
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="confirm-password" className="text-sm font-medium text-text-dark">
-              Confirm password
+              {t("auth.forgotPassword.confirmPassword")}
             </label>
             <Input
               id="confirm-password"
@@ -302,7 +307,7 @@ function ResetStep({ resetToken, onDone }: { resetToken: string; onDone: () => v
             </p>
           ) : null}
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : "Reset password"}
+            {submitting ? t("auth.forgotPassword.resetSubmitting") : t("auth.forgotPassword.resetSubmit")}
           </Button>
         </form>
       </CardBody>
@@ -311,16 +316,15 @@ function ResetStep({ resetToken, onDone }: { resetToken: string; onDone: () => v
 }
 
 function DoneStep() {
+  const { t } = useI18n();
   return (
     <Card className="w-full max-w-sm">
       <CardBody className="flex flex-col items-center gap-3 py-8 text-center">
         <SuccessIcon />
-        <h1 className="text-xl font-semibold text-text-dark">Password reset</h1>
-        <p className="text-sm text-text-muted">
-          Your password has been changed. Any other signed-in devices have been signed out.
-        </p>
+        <h1 className="text-xl font-semibold text-text-dark">{t("auth.forgotPassword.doneTitle")}</h1>
+        <p className="text-sm text-text-muted">{t("auth.forgotPassword.doneDescription")}</p>
         <Link href="/login" className="w-full">
-          <Button className="w-full">Log in</Button>
+          <Button className="w-full">{t("auth.forgotPassword.doneLogIn")}</Button>
         </Link>
       </CardBody>
     </Card>

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { usePronunciation } from "./use-pronunciation";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface PronunciationButtonProps {
   /** Text to speak — always the target-language term (e.g. a card's front), never the translation. */
@@ -16,6 +17,7 @@ export interface PronunciationButtonProps {
 }
 
 export function PronunciationButton({ text, language, compact, className }: PronunciationButtonProps) {
+  const { t } = useI18n();
   const { isSupported, speak, cancel } = usePronunciation();
 
   // Cancels stale speech whenever the identity of what this button speaks
@@ -30,7 +32,7 @@ export function PronunciationButton({ text, language, compact, className }: Pron
     return null;
   }
 
-  const label = `Phát âm ${text}`;
+  const label = t("pronunciation.pronounceLabel", { text });
 
   return (
     <Button
@@ -43,7 +45,7 @@ export function PronunciationButton({ text, language, compact, className }: Pron
       className={cn(compact ? "h-8 w-8 p-0" : "gap-1.5", className)}
     >
       <SpeakerIcon />
-      {compact ? null : "Phát âm"}
+      {compact ? null : t("pronunciation.pronounce")}
     </Button>
   );
 }

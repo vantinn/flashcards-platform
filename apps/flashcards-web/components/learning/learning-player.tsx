@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Loading } from "@/components/ui/loading";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
+import { CheckCircleIcon, XIcon } from "@/components/ui/icons";
 import { McQuestion } from "./mc-question";
 import { TypedQuestion } from "./typed-question";
 import { PronunciationButton } from "@/components/pronunciation/pronunciation-button";
 import { api, ApiError } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/error-message";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import type {
   LearningAnswerResult,
   LearningMode,
@@ -22,7 +25,7 @@ export interface LearningPlayerProps {
   setId: string;
   setTitle: string;
   mode: LearningMode;
-  icon: string;
+  icon: ReactNode;
   title: string;
   completionMessage: string;
   /** BCP-47 tag for pronunciation, or null for a Free-category set. */
@@ -44,6 +47,7 @@ interface Feedback {
  * start/resume/answer/feedback machinery per mode.
  */
 export function LearningPlayer({ setId, setTitle, mode, icon, title, completionMessage, language = null }: LearningPlayerProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("starting");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -64,7 +68,7 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
       setQuestion(result.question);
       setPhase(result.session.status === "completed" ? "completed" : "playing");
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Could not start this session.";
+      const message = err instanceof ApiError ? getErrorMessage(err, t) : t("learning.couldNotStart");
       if (err instanceof ApiError && err.status === 400) {
         setErrorMessage(message);
         setPhase("blocked");
@@ -73,7 +77,7 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
         setPhase("error");
       }
     }
-  }, [setId, mode]);
+  }, [setId, mode, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment on start() above
@@ -92,11 +96,11 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
         setFeedback(null);
         setPhase(freshSession.status === "completed" ? "completed" : "playing");
       } catch {
-        setErrorMessage("Could not refresh this session.");
+        setErrorMessage(t("learning.couldNotRefresh"));
         setPhase("error");
       }
     },
-    [],
+    [t],
   );
 
   async function submitAnswer(payload: { selectedText?: string; typedText?: string }) {
@@ -128,7 +132,7 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
         await refetchAfterConflict(session.id);
         setSubmitting(false);
       } else {
-        setErrorMessage(err instanceof ApiError ? err.message : "Could not submit your answer.");
+        setErrorMessage(err instanceof ApiError ? getErrorMessage(err, t) : t("learning.couldNotSubmit"));
         setSubmitting(false);
       }
     }
@@ -139,15 +143,15 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
   }
 
   if (phase === "starting") {
-    return <Loading label="Đang chuẩn bị..." />;
+    return <Loading label={t("learning.preparing")} />;
   }
 
   if (phase === "blocked") {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
-        <ErrorState title="Chưa thể học chế độ này" description={errorMessage ?? undefined} />
+        <ErrorState title={t("learning.couldNotStartTitle")} description={errorMessage ?? undefined} />
         <Button variant="outline" onClick={handleExit}>
-          Quay lại bộ thẻ
+          {t("learning.backToSet")}
         </Button>
       </div>
     );
@@ -156,8 +160,8 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
   if (phase === "error") {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
-        <ErrorState title="Có lỗi xảy ra" description={errorMessage ?? undefined} />
-        <Button onClick={start}>Thử lại</Button>
+        <ErrorState title={t("learning.errorTitle")} description={errorMessage ?? undefined} />
+        <Button onClick={start}>{t("learning.tryAgain")}</Button>
       </div>
     );
   }
@@ -167,14 +171,14 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
       <div className="flex flex-1 flex-col items-center justify-center py-16">
         <Card className="w-full max-w-md animate-fade-up">
           <CardBody className="flex flex-col items-center gap-5 py-10 text-center">
-            <span className="text-4xl">🎉</span>
+            <CheckCircleIcon className="h-10 w-10 text-success" />
             <div>
-              <h1 className="text-xl font-bold text-text-dark">Chúc mừng!</h1>
+              <h1 className="text-xl font-bold text-text-dark">{t("learning.congratulations")}</h1>
               <p className="text-sm text-text-muted">{completionMessage}</p>
               <p className="mt-1 text-sm font-medium text-text-dark">{setTitle}</p>
             </div>
             <Button className="w-full" onClick={handleExit}>
-              Quay lại bộ thẻ
+              {t("learning.backToSet")}
             </Button>
           </CardBody>
         </Card>
@@ -183,26 +187,30 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
   }
 
   if (!question) {
-    return <ErrorState title="Không có câu hỏi nào" />;
+    return <ErrorState title={t("learning.noQuestionsTitle")} />;
   }
 
   return (
     <div className="flex flex-1 flex-col items-center gap-6 px-4 py-8 sm:gap-8">
       <div className="flex w-full max-w-2xl items-center justify-between">
-        <p className="truncate text-sm font-semibold uppercase tracking-wide text-primary">
-          {icon} {title}
+        <p className="flex items-center gap-1.5 truncate text-sm font-semibold uppercase tracking-wide text-primary">
+          {icon}
+          {title}
         </p>
-        <button type="button" onClick={handleExit} className="text-sm text-text-muted hover:text-text-dark">
-          Thoát
+        <button
+          type="button"
+          onClick={handleExit}
+          className="flex items-center gap-1 text-sm text-text-muted hover:text-text-dark"
+        >
+          <XIcon className="h-4 w-4" />
+          {t("learning.exit")}
         </button>
       </div>
 
       {session ? (
         <div className="flex w-full max-w-2xl flex-col gap-2">
           <div className="flex items-center justify-between text-sm text-text-muted">
-            <span>
-              {session.progress.completed} / {session.progress.total}
-            </span>
+            <span>{t("learning.progressXOfY", { completed: session.progress.completed, total: session.progress.total })}</span>
             <span>{session.progress.percent}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-black/5">
@@ -247,11 +255,11 @@ export function LearningPlayer({ setId, setTitle, mode, icon, title, completionM
         >
           {feedback
             ? feedback.correct
-              ? "Chính xác!"
-              : `Chưa đúng — đáp án đúng là: "${feedback.correctAnswer}"`
+              ? t("learning.correct")
+              : t("learning.incorrectAnswerIs", { answer: feedback.correctAnswer })
             : question.type === "multiple_choice"
-              ? "Chọn một đáp án"
-              : "Nhập câu trả lời của bạn"}
+              ? t("learning.chooseAnswer")
+              : t("learning.typeYourAnswer")}
         </p>
         {/*
           Typed Answer only: the backend withholds the target word (front)

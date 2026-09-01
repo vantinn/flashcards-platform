@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api-client";
-import { SET_LANGUAGE_LABELS } from "@/lib/set-language";
+import { getErrorMessage } from "@/lib/error-message";
+import { SET_LANGUAGES, setLanguageLabel } from "@/lib/set-language";
+import { SET_VISIBILITIES, setVisibilityHint } from "@/lib/set-visibility";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import type { FlashcardSet, FlashcardSetDetail, SetLanguage, SetVisibility } from "@/types/flashcard";
 
 export interface EditSetFormProps {
@@ -22,6 +25,7 @@ export interface EditSetFormProps {
 // no way to change a set's title, description, category, or visibility
 // after creation.
 export function EditSetForm({ set }: EditSetFormProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [title, setTitle] = useState(set.title);
   const [description, setDescription] = useState(set.description ?? "");
@@ -44,7 +48,7 @@ export function EditSetForm({ set }: EditSetFormProps) {
       router.push(`/sets/${set.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("common.somethingWrong"));
     } finally {
       setSubmitting(false);
     }
@@ -56,7 +60,7 @@ export function EditSetForm({ set }: EditSetFormProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="title">
-              Title
+              {t("sets.titleLabel")}
             </label>
             <Input
               id="title"
@@ -69,7 +73,7 @@ export function EditSetForm({ set }: EditSetFormProps) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="description">
-              Description
+              {t("sets.descriptionLabel")}
             </label>
             <Textarea
               id="description"
@@ -80,12 +84,12 @@ export function EditSetForm({ set }: EditSetFormProps) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="language">
-              Danh mục
+              {t("category.label")}
             </label>
             <Select id="language" value={language} onChange={(event) => setLanguage(event.target.value as SetLanguage)}>
-              {(Object.keys(SET_LANGUAGE_LABELS) as SetLanguage[]).map((value) => (
+              {SET_LANGUAGES.map((value) => (
                 <option key={value} value={value}>
-                  {SET_LANGUAGE_LABELS[value]}
+                  {setLanguageLabel(value, t)}
                 </option>
               ))}
             </Select>
@@ -93,23 +97,25 @@ export function EditSetForm({ set }: EditSetFormProps) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="visibility">
-              Visibility
+              {t("sets.visibilityLabel")}
             </label>
             <Select
               id="visibility"
               value={visibility}
               onChange={(event) => setVisibility(event.target.value as SetVisibility)}
             >
-              <option value="private">Private — only you</option>
-              <option value="unlisted">Unlisted — anyone with the link</option>
-              <option value="public">Public — discoverable in Explore</option>
+              {SET_VISIBILITIES.map((value) => (
+                <option key={value} value={value}>
+                  {setVisibilityHint(value, t)}
+                </option>
+              ))}
             </Select>
           </div>
 
           {error ? <p className="text-sm text-danger">{error}</p> : null}
 
           <Button type="submit" disabled={submitting || !title}>
-            {submitting ? "Saving..." : "Save changes"}
+            {submitting ? t("sets.saving") : t("sets.saveChanges")}
           </Button>
         </form>
       </CardBody>

@@ -1,4 +1,8 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
+import { ArrowLeftIcon, ArrowRightIcon, ShuffleIcon, RotateCcwIcon, XIcon } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface StudyControlsProps {
   onPrevious: () => void;
@@ -7,7 +11,7 @@ export interface StudyControlsProps {
   onRestart: () => void;
   onExit: () => void;
   canGoPrevious: boolean;
-  nextLabel?: string;
+  isLastCard: boolean;
 }
 
 export function StudyControls({
@@ -17,8 +21,11 @@ export function StudyControls({
   onRestart,
   onExit,
   canGoPrevious,
-  nextLabel = "Next",
+  isLastCard,
 }: StudyControlsProps) {
+  const { t } = useI18n();
+  const nextLabel = isLastCard ? t("study.finish") : t("study.next");
+
   return (
     <div className="flex w-full max-w-2xl flex-col items-center gap-4">
       <div className="flex w-full items-center justify-center gap-3">
@@ -27,36 +34,41 @@ export function StudyControls({
           size="lg"
           onClick={onPrevious}
           disabled={!canGoPrevious}
-          aria-label="Previous card"
-          className="min-w-[44px]"
+          aria-label={t("study.previous")}
+          className="min-w-[44px] gap-1.5"
         >
-          ← Previous
+          <ArrowLeftIcon className="h-4 w-4" />
+          {t("study.previous")}
         </Button>
-        <Button size="lg" onClick={onNext} aria-label={nextLabel} className="min-w-[44px]">
-          {nextLabel} →
+        <Button size="lg" onClick={onNext} aria-label={nextLabel} className="min-w-[44px] gap-1.5">
+          {nextLabel}
+          <ArrowRightIcon className="h-4 w-4" />
         </Button>
       </div>
       <div className="flex items-center gap-4 text-sm">
         <button
           type="button"
           onClick={onShuffle}
-          className="rounded-card px-3 py-2 font-medium text-text-muted hover:bg-black/5 hover:text-text-dark"
+          className="flex items-center gap-1.5 rounded-card px-3 py-2 font-medium text-text-muted hover:bg-black/5 hover:text-text-dark"
         >
-          🔀 Shuffle
+          <ShuffleIcon className="h-4 w-4" />
+          {t("study.shuffle")}
         </button>
         <button
           type="button"
           onClick={onRestart}
-          className="rounded-card px-3 py-2 font-medium text-text-muted hover:bg-black/5 hover:text-text-dark"
+          className="flex items-center gap-1.5 rounded-card px-3 py-2 font-medium text-text-muted hover:bg-black/5 hover:text-text-dark"
         >
-          ↺ Restart
+          <RotateCcwIcon className="h-4 w-4" />
+          {t("study.restart")}
         </button>
         <button
           type="button"
           onClick={onExit}
-          className="rounded-card px-3 py-2 font-medium text-text-muted hover:bg-black/5 hover:text-text-dark"
+          className="flex items-center gap-1.5 rounded-card px-3 py-2 font-medium text-text-muted hover:bg-black/5 hover:text-text-dark"
         >
-          ✕ Exit
+          <XIcon className="h-4 w-4" />
+          {t("study.exit")}
         </button>
       </div>
     </div>

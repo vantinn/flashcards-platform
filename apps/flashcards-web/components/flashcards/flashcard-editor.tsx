@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ArrowUpIcon, ArrowDownIcon } from "@/components/ui/icons";
 import { api, ApiError } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/error-message";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import type { Flashcard } from "@/types/flashcard";
 
 export interface FlashcardEditorProps {
@@ -15,6 +18,7 @@ export interface FlashcardEditorProps {
 }
 
 export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
+  const { t } = useI18n();
   const [cards, setCards] = useState<Flashcard[]>(initialCards);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +56,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
       // every card require a re-click into the form.
       newFrontRef.current?.focus();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not add this card.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("cards.couldNotAdd"));
     } finally {
       setAdding(false);
     }
@@ -79,7 +83,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
       setCards((current) => current.map((card) => (card.id === cardId ? updated : card)));
       setEditingId(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not save this card.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("cards.couldNotSave"));
     } finally {
       setSaving(false);
     }
@@ -94,7 +98,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
       setCards((current) => current.filter((card) => card.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not delete this card.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("cards.couldNotDelete"));
     } finally {
       setDeleting(false);
     }
@@ -107,7 +111,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
       const updated = await api.post<Flashcard[]>(`/flashcards/${card.id}/duplicate`);
       setCards(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not duplicate this card.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("cards.couldNotDuplicate"));
     } finally {
       setDuplicatingId(null);
     }
@@ -130,7 +134,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
       setCards(saved);
     } catch (err) {
       setCards(cards); // revert the optimistic swap
-      setError(err instanceof ApiError ? err.message : "Could not reorder cards.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("cards.couldNotReorder"));
     } finally {
       setReorderingId(null);
     }
@@ -140,11 +144,11 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
     <div className="flex flex-col gap-6">
       <Card>
         <CardBody>
-          <h2 className="mb-4 font-semibold text-text-dark">Add a card</h2>
+          <h2 className="mb-4 font-semibold text-text-dark">{t("cards.addCard")}</h2>
           <form onSubmit={handleAdd} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="new-front" className="text-xs font-medium text-text-muted">
-                Front
+                {t("cards.front")}
               </label>
               <Textarea
                 id="new-front"
@@ -156,7 +160,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="new-back" className="text-xs font-medium text-text-muted">
-                Back
+                {t("cards.back")}
               </label>
               <Textarea
                 id="new-back"
@@ -167,7 +171,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
             </div>
             <div className="sm:col-span-2">
               <Button type="submit" disabled={adding || !newFront || !newBack}>
-                {adding ? "Adding..." : "Add card"}
+                {adding ? t("cards.adding") : t("cards.addCardBtn")}
               </Button>
             </div>
           </form>
@@ -177,7 +181,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {cards.length === 0 ? (
-        <EmptyState title="No cards yet" description="Add your first card above." />
+        <EmptyState title={t("cards.noCardsYet")} description={t("cards.addFirstCardAbove")} />
       ) : (
         <ol className="flex flex-col gap-3">
           {cards.map((card, index) => (
@@ -192,10 +196,10 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => saveEdit(card.id)} disabled={saving}>
-                          {saving ? "Saving..." : "Save"}
+                          {saving ? t("cards.saving") : t("cards.save")}
                         </Button>
                         <Button size="sm" variant="outline" onClick={cancelEdit} disabled={saving}>
-                          Cancel
+                          {t("cards.cancel")}
                         </Button>
                       </div>
                     </div>
@@ -204,21 +208,21 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
                       <div className="flex flex-col gap-1 pt-1">
                         <button
                           type="button"
-                          aria-label="Move card up"
+                          aria-label={t("cards.moveUp")}
                           onClick={() => move(index, -1)}
                           disabled={index === 0}
                           className="flex h-7 w-7 items-center justify-center rounded-card text-text-muted hover:bg-black/5 disabled:opacity-30"
                         >
-                          ↑
+                          <ArrowUpIcon />
                         </button>
                         <button
                           type="button"
-                          aria-label="Move card down"
+                          aria-label={t("cards.moveDown")}
                           onClick={() => move(index, 1)}
                           disabled={index === cards.length - 1}
                           className="flex h-7 w-7 items-center justify-center rounded-card text-text-muted hover:bg-black/5 disabled:opacity-30"
                         >
-                          ↓
+                          <ArrowDownIcon />
                         </button>
                       </div>
 
@@ -229,7 +233,7 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
 
                       <div className="flex shrink-0 gap-2">
                         <Button size="sm" variant="outline" onClick={() => startEdit(card)}>
-                          Edit
+                          {t("cards.edit")}
                         </Button>
                         <Button
                           size="sm"
@@ -237,10 +241,10 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
                           onClick={() => duplicateCard(card)}
                           disabled={duplicatingId === card.id}
                         >
-                          {duplicatingId === card.id ? "Duplicating..." : "Duplicate"}
+                          {duplicatingId === card.id ? t("cards.duplicating") : t("cards.duplicate")}
                         </Button>
                         <Button size="sm" variant="danger" onClick={() => setDeleteTarget(card)}>
-                          Delete
+                          {t("cards.delete")}
                         </Button>
                       </div>
                     </div>
@@ -254,9 +258,9 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="Delete this card?"
-        description="This card will be permanently removed from the set."
-        confirmLabel="Delete card"
+        title={t("cards.deleteConfirmTitle")}
+        description={t("cards.deleteConfirmDesc")}
+        confirmLabel={t("cards.deleteConfirmLabel")}
         danger
         busy={deleting}
         onConfirm={confirmDelete}
