@@ -6,6 +6,8 @@ import { Flashcard } from '../modules/flashcards/entities/flashcard.entity.js';
 import { StudySession } from '../modules/study/entities/study-session.entity.js';
 import { StudyProgress } from '../modules/progress/entities/study-progress.entity.js';
 import { OtpVerification } from '../modules/otp/entities/otp-verification.entity.js';
+import { LearningSession } from '../modules/learning/entities/learning-session.entity.js';
+import { LearningCardState } from '../modules/learning/entities/learning-card-state.entity.js';
 
 /**
  * Standalone DataSource used only by the TypeORM CLI (migration:generate /
@@ -19,7 +21,16 @@ const AppDataSource = new DataSource({
   username: process.env.DATABASE_USERNAME ?? 'postgres',
   password: process.env.DATABASE_PASSWORD ?? 'postgres',
   database: process.env.DATABASE_NAME ?? 'flashcards',
-  entities: [User, FlashcardSet, Flashcard, StudySession, StudyProgress, OtpVerification],
+  entities: [
+    User,
+    FlashcardSet,
+    Flashcard,
+    StudySession,
+    StudyProgress,
+    OtpVerification,
+    LearningSession,
+    LearningCardState,
+  ],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,
 });

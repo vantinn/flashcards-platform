@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SetActions } from "@/components/flashcards/set-actions";
 import { DuplicateSetButton } from "@/components/flashcards/duplicate-set-button";
+import { ModeProgressCard } from "@/components/learning/mode-progress-card";
 import { serverApi, ApiError } from "@/lib/api-server";
 import { getCurrentUser } from "@/lib/current-user";
 import type { FlashcardSetDetail } from "@/types/flashcard";
+import type { LearningSessionSummary } from "@/types/learning";
 
 async function loadSet(id: string) {
   try {
@@ -22,10 +24,29 @@ async function loadSet(id: string) {
   }
 }
 
+/** Same normalize-and-count-distinct rule the backend gates Cram/Deep Learning start on — mirrored here only to avoid showing an enabled button that the API would immediately 400 on; the API call remains the actual authority. */
+function countDistinctAnswers(cards: { back: string }[]): number {
+  const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+  return new Set(cards.map((card) => normalize(card.back))).size;
+}
+
 export default async function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [set, currentUser] = await Promise.all([loadSet(id), getCurrentUser()]);
   const isOwner = currentUser?.id === set.creator.id;
+
+  let learningSessions: LearningSessionSummary[] = [];
+  if (currentUser) {
+    try {
+      learningSessions = await serverApi.get<LearningSessionSummary[]>(`/learning-sessions?setId=${id}`);
+    } catch {
+      // Non-critical enhancement — the mode cards below just show as "not started" if this fails.
+      learningSessions = [];
+    }
+  }
+  const cramSession = learningSessions.find((session) => session.mode === "cram") ?? null;
+  const deepLearningSession = learningSessions.find((session) => session.mode === "deep_learning") ?? null;
+  const hasEnoughDistinctAnswers = countDistinctAnswers(set.cards) >= 4;
 
   return (
     <PageContainer className="flex flex-col gap-6">
@@ -55,6 +76,29 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
           </div>
         ) : null}
       </div>
+
+      {currentUser && set.cardCount > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ModeProgressCard
+            href={`/sets/${set.id}/cram`}
+            icon="⚡"
+            title="Học nhồi nhét"
+            description="Học cấp tốc để thi"
+            eligible={hasEnoughDistinctAnswers}
+            ineligibleMessage={hasEnoughDistinctAnswers ? undefined : "Cần ít nhất 4 thẻ có đáp án khác nhau"}
+            session={cramSession}
+          />
+          <ModeProgressCard
+            href={`/sets/${set.id}/deep-learning`}
+            icon="🧠"
+            title="Học nhớ sâu"
+            description="Kết hợp trắc nghiệm và tự luận"
+            eligible={hasEnoughDistinctAnswers}
+            ineligibleMessage={hasEnoughDistinctAnswers ? undefined : "Cần ít nhất 4 thẻ có đáp án khác nhau"}
+            session={deepLearningSession}
+          />
+        </div>
+      ) : null}
 
       {set.cards.length === 0 ? (
         <EmptyState
