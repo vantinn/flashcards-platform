@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SearchService } from './search.service.js';
-import { FlashcardSet } from '../flashcard-sets/entities/flashcard-set.entity.js';
+import { FlashcardSet, SetVisibility } from '../flashcard-sets/entities/flashcard-set.entity.js';
 import { CacheService } from '../../redis/cache.service.js';
 
 describe('SearchService', () => {
@@ -50,5 +50,12 @@ describe('SearchService', () => {
     const [keyPage1] = cache.setJson.mock.calls[0];
     const [keyPage2] = cache.setJson.mock.calls[1];
     expect(keyPage1).not.toBe(keyPage2);
+  });
+
+  it('only ever queries for PUBLIC sets, regardless of the search term or category — private/unlisted sets must never be discoverable here', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'anything', category: 'english' });
+
+    const [options] = repo.findAndCount.mock.calls[0];
+    expect(options.where).toMatchObject({ visibility: SetVisibility.PUBLIC });
   });
 });

@@ -133,18 +133,18 @@ export class FlashcardSetsService {
   }
 
   /**
-   * Copies a set (and all its cards) into the caller's own library. Source
-   * only needs to be *visible* to the caller, not owned — this is how a
-   * public/unlisted set gets "saved" by someone other than its creator.
-   * Always lands as private regardless of the source's visibility: a copy
-   * shouldn't silently become public just because the original was.
+   * Copies a set (and all its cards) into the caller's own library.
+   * Owner-only, same as update()/remove() — a public set can be studied by
+   * anyone but only its creator may derive a copy from it. Always lands as
+   * private regardless of the source's visibility: a copy shouldn't
+   * silently become public just because the original was.
    *
    * The set row and its cards are written in one transaction — without
    * that, a crash or failed write between the two save() calls would leave
    * a set whose cardCount says N but that actually has zero cards.
    */
   async duplicate(id: string, userId: string): Promise<FlashcardSet> {
-    const source = await this.findOneVisibleTo(id, userId);
+    const source = await this.assertOwnership(id, userId);
     const sortedCards = [...source.cards].sort((a, b) => a.position - b.position);
 
     const copy = await this.setsRepository.manager.transaction(async (manager) => {

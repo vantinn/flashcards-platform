@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SetActions } from "@/components/flashcards/set-actions";
-import { DuplicateSetButton } from "@/components/flashcards/duplicate-set-button";
 import { ModeProgressCard } from "@/components/learning/mode-progress-card";
 import { serverApi, ApiError } from "@/lib/api-server";
 import { getCurrentUser } from "@/lib/current-user";
@@ -54,9 +53,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-text-dark">{set.title}</h1>
-            {isOwner ? (
-              <Badge variant={set.visibility === "public" ? "success" : "default"}>{set.visibility}</Badge>
-            ) : null}
+            <Badge variant={set.visibility === "public" ? "success" : "default"}>{set.visibility}</Badge>
             {set.category ? <Badge variant="accent">{set.category}</Badge> : null}
           </div>
           {set.description ? <p className="text-text-muted">{set.description}</p> : null}
@@ -72,7 +69,6 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
             <Link href={`/sets/${set.id}/study`}>
               <Button disabled={set.cardCount === 0}>Start studying</Button>
             </Link>
-            <DuplicateSetButton setId={set.id} />
           </div>
         ) : null}
       </div>

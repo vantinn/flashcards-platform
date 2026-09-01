@@ -184,7 +184,7 @@ describe('FlashcardSetsService', () => {
   });
 
   describe('duplicate', () => {
-    it('copies a visible set and all of its cards into the caller\'s library as private, in one transaction', async () => {
+    it('copies the owner\'s own set and all of its cards into their library as private, in one transaction', async () => {
       repo.findOne.mockResolvedValue(
         buildSet({
           visibility: SetVisibility.PUBLIC,
@@ -197,13 +197,13 @@ describe('FlashcardSetsService', () => {
         }),
       );
 
-      const result = await service.duplicate('set-1', 'someone-else');
+      const result = await service.duplicate('set-1', 'owner-1');
 
       expect(repo.manager.transaction).toHaveBeenCalledTimes(1);
       expect(result.title).toBe('Spanish Basics (copy)');
       expect(result.visibility).toBe(SetVisibility.PRIVATE);
       expect(result.language).toBe(SetLanguage.ENGLISH);
-      expect(result.creator).toEqual({ id: 'someone-else' });
+      expect(result.creator).toEqual({ id: 'owner-1' });
 
       // Second save() call inside the transaction is the cards array.
       const [savedCards] = transactionManager.save.mock.calls[1];
@@ -219,9 +219,15 @@ describe('FlashcardSetsService', () => {
       expect(repo.manager.transaction).not.toHaveBeenCalled();
     });
 
+    it('rejects duplicating a public set the caller does not own', async () => {
+      repo.findOne.mockResolvedValue(buildSet({ visibility: SetVisibility.PUBLIC }));
+      await expect(service.duplicate('set-1', 'someone-else')).rejects.toBeInstanceOf(ForbiddenException);
+      expect(repo.manager.transaction).not.toHaveBeenCalled();
+    });
+
     it('skips the cards write entirely for an empty set', async () => {
       repo.findOne.mockResolvedValue(buildSet({ visibility: SetVisibility.PUBLIC, cards: [] }));
-      await service.duplicate('set-1', 'someone-else');
+      await service.duplicate('set-1', 'owner-1');
       expect(transactionManager.save).toHaveBeenCalledTimes(1); // just the set, no cards call
     });
   });
