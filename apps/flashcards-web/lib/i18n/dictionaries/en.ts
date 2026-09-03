@@ -48,6 +48,9 @@ const en: typeof vi = {
     register: "Register",
     profile: "Profile",
     copyright: "© {{year}} Flashcards. Learn anything, one card at a time.",
+    legalNav: "Legal",
+    privacy: "Privacy",
+    terms: "Terms",
   },
   auth: {
     login: {
@@ -438,6 +441,20 @@ const en: typeof vi = {
     vietnamese: "Tiếng Việt",
     english: "English",
     label: "Language",
+  },
+  legal: {
+    privacyTitle: "Privacy Policy",
+    privacyBody: [
+      "We collect the information you provide when creating an account, such as your email and display name, along with data about the flashcard sets and study activity you create on the platform.",
+      "This information is used only to operate and improve the service — for example, saving your study progress and personalizing your experience. We do not sell your data to third parties.",
+      "You can update your profile information at any time from the Profile page, or contact us to request deletion of your account and associated data.",
+    ],
+    termsTitle: "Terms of Service",
+    termsBody: [
+      "By using this platform, you agree to use the service lawfully and to respect the rights of other learners.",
+      "You are responsible for the content of the flashcard sets you create and share publicly. We may remove content that violates the law or our usage policies.",
+      "We may update these terms from time to time. Continuing to use the service after a change means you accept the updated terms.",
+    ],
   },
 };
 

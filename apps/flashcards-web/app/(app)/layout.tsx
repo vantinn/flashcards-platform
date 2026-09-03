@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
+import { AuthenticatedFooter } from "@/components/layout/authenticated-footer";
 import { getCurrentUser } from "@/lib/current-user";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -12,10 +12,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col">
-      <Navbar user={user} />
-      <main className="flex flex-1 flex-col">{children}</main>
-      <Footer />
-    </div>
+    <>
+      {/* min-h-screen is scoped to nav+content (not the footer) so the
+          footer sits below the fold and only appears once the user scrolls
+          past a full viewport of app content, instead of being pinned to
+          the bottom of the screen on short pages. */}
+      <div className="flex min-h-screen flex-1 flex-col">
+        <Navbar user={user} />
+        <main className="flex flex-1 flex-col">{children}</main>
+      </div>
+      <AuthenticatedFooter />
+    </>
   );
 }
