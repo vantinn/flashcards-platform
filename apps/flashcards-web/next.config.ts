@@ -15,7 +15,9 @@ const nextConfig: NextConfig = {
   // Produces a self-contained .next/standalone build (server + only the
   // node_modules it actually needs) — what the Dockerfile copies into the
   // production image instead of shipping the full node_modules tree.
-  output: "standalone",
+  // Skipped on Vercel: its own build pipeline is incompatible with
+  // standalone output (breaks file tracing) and doesn't need it anyway.
+  ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
 
   // Removes the "X-Powered-By: Next.js" response header — free
   // reconnaissance for an attacker (framework + version fingerprinting)
