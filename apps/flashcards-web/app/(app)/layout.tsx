@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/navbar";
 import { AuthenticatedFooter } from "@/components/layout/authenticated-footer";
 import { getCurrentUser } from "@/lib/current-user";
@@ -10,6 +11,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // defense-in-depth for the case where a stale-but-present cookie passes
   // the proxy's presence check but the backend rejects it as invalid.
   const user = await getCurrentUser();
+
+  // Server-authoritative onboarding gate: a first-time user (gender not yet
+  // saved) is sent to /onboarding before they can reach any page in this
+  // group, on every request — not just once client-side — so a page
+  // refresh, a direct link, or the back button can't land them past it.
+  // /onboarding itself lives outside this route group specifically so this
+  // check never applies to it, which is what keeps this loop-free.
+  if (user && !user.onboardingCompleted) {
+    redirect("/onboarding");
+  }
 
   return (
     <>

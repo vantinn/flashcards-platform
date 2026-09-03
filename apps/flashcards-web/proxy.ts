@@ -34,5 +34,6 @@ export const config = {
     "/sets/:id/cram",
     "/sets/:id/deep-learning",
     "/profile",
+    "/onboarding",
   ],
 };

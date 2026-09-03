@@ -442,6 +442,21 @@ const en: typeof vi = {
     english: "English",
     label: "Language",
   },
+  onboarding: {
+    genderTitle: "Choose your gender",
+    genderSubtitle: "Choose your gender to personalize your experience",
+    genderGroupLabel: "Gender",
+    male: "Male",
+    female: "Female",
+    continue: "Continue",
+    saving: "Saving...",
+    avatarTitle: "Choose your avatar",
+    avatarSubtitle: "You can choose an avatar or skip this step.",
+    avatarGroupLabel: "Avatar",
+    avatarOptionLabel: "Avatar {{index}}",
+    skip: "Skip",
+    finish: "Finish",
+  },
   legal: {
     privacyTitle: "Privacy Policy",
     privacyBody: [

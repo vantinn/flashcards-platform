@@ -439,6 +439,21 @@ const vi = {
     english: "English",
     label: "Ngôn ngữ",
   },
+  onboarding: {
+    genderTitle: "Chọn giới tính",
+    genderSubtitle: "Chọn giới tính của bạn để cá nhân hóa trải nghiệm",
+    genderGroupLabel: "Giới tính",
+    male: "Nam",
+    female: "Nữ",
+    continue: "Tiếp tục",
+    saving: "Đang lưu...",
+    avatarTitle: "Chọn ảnh đại diện",
+    avatarSubtitle: "Bạn có thể chọn một ảnh hoặc bỏ qua bước này.",
+    avatarGroupLabel: "Ảnh đại diện",
+    avatarOptionLabel: "Ảnh đại diện {{index}}",
+    skip: "Bỏ qua",
+    finish: "Hoàn tất",
+  },
   legal: {
     privacyTitle: "Chính sách quyền riêng tư",
     privacyBody: [
