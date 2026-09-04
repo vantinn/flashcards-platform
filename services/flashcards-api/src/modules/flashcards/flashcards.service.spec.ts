@@ -1,11 +1,14 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FlashcardsService } from './flashcards.service.js';
 import { Flashcard } from './entities/flashcard.entity.js';
 import { SetVisibility } from '../flashcard-sets/entities/flashcard-set.entity.js';
 import { FlashcardSetsService } from '../flashcard-sets/flashcard-sets.service.js';
+
+const DEFAULT_MAX_BULK_IMPORT = 500;
 
 function buildCard(overrides: Partial<Flashcard> = {}): Flashcard {
   return {
@@ -65,12 +68,16 @@ describe('FlashcardsService', () => {
       assertOwnership: vi.fn(),
       incrementCardCount: vi.fn(),
     };
+    const configService = {
+      get: vi.fn((key: string) => (key === 'flashcards.maxBulkImport' ? DEFAULT_MAX_BULK_IMPORT : undefined)),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         FlashcardsService,
         { provide: getRepositoryToken(Flashcard), useValue: repo },
         { provide: FlashcardSetsService, useValue: flashcardSetsService },
+        { provide: ConfigService, useValue: configService },
       ],
     }).compile();
 
@@ -149,6 +156,120 @@ describe('FlashcardsService', () => {
       repo.findOne.mockResolvedValue(buildCard());
       await service.remove('card-1', 'owner-1');
       expect(flashcardSetsService.incrementCardCount).toHaveBeenCalledWith('set-1', -1);
+    });
+  });
+
+  describe('bulkCreate', () => {
+    beforeEach(() => {
+      flashcardSetsService.assertOwnership.mockResolvedValue(undefined);
+      repo.find.mockResolvedValue([]); // no existing cards in the set, by default
+      repo.count.mockResolvedValue(0); // starting position, by default
+    });
+
+    it('checks set ownership before importing anything', async () => {
+      flashcardSetsService.assertOwnership.mockRejectedValue(new ForbiddenException());
+
+      await expect(service.bulkCreate('set-1', 'stranger', { cards: [{ front: 'a', back: 'b' }] })).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(repo.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects a payload larger than the configured maximum, without touching the database', async () => {
+      const tooMany = Array.from({ length: DEFAULT_MAX_BULK_IMPORT + 1 }, (_, i) => ({ front: `f${i}`, back: `b${i}` }));
+
+      await expect(service.bulkCreate('set-1', 'owner-1', { cards: tooMany })).rejects.toBeInstanceOf(BadRequestException);
+      expect(repo.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it('imports all rows in one transaction with a single batched save call, at sequential positions after the existing cards', async () => {
+      repo.count.mockResolvedValue(3); // 3 cards already in the set
+      const cards = [
+        { front: 'hello', back: 'xin chào' },
+        { front: 'world', back: 'thế giới' },
+      ];
+
+      const result = await service.bulkCreate('set-1', 'owner-1', { cards });
+
+      expect(transactionalSave).toHaveBeenCalledTimes(1); // one batched call, not one per row
+      const savedArg = transactionalSave.mock.calls[0][0];
+      expect(savedArg).toHaveLength(2);
+      expect(savedArg[0]).toMatchObject({ front: 'hello', back: 'xin chào', position: 3 });
+      expect(savedArg[1]).toMatchObject({ front: 'world', back: 'thế giới', position: 4 });
+      expect(result.importedCount).toBe(2);
+      expect(result.totalReceived).toBe(2);
+      expect(result.duplicateCount).toBe(0);
+      expect(flashcardSetsService.incrementCardCount).toHaveBeenCalledWith('set-1', 2);
+    });
+
+    it('trims whitespace from front/back before saving', async () => {
+      await service.bulkCreate('set-1', 'owner-1', { cards: [{ front: '  hello  ', back: '  xin chào  ' }] });
+
+      const savedArg = transactionalSave.mock.calls[0][0];
+      expect(savedArg[0]).toMatchObject({ front: 'hello', back: 'xin chào' });
+    });
+
+    it('skips a row that duplicates an earlier row in the same pasted batch, and reports it', async () => {
+      const cards = [
+        { front: 'hello', back: 'xin chào' },
+        { front: 'world', back: 'thế giới' },
+        { front: 'hello', back: 'xin chào' }, // exact repeat
+        { front: '  hello  ', back: '  xin chào  ' }, // repeat after trimming
+      ];
+
+      const result = await service.bulkCreate('set-1', 'owner-1', { cards });
+
+      const savedArg = transactionalSave.mock.calls[0][0];
+      expect(savedArg).toHaveLength(2);
+      expect(result.importedCount).toBe(2);
+      expect(result.duplicateCount).toBe(2);
+      expect(result.totalReceived).toBe(4);
+    });
+
+    it('skips a row that duplicates a card already in the set, without touching the existing card', async () => {
+      repo.find.mockResolvedValue([{ front: 'hello', back: 'xin chào' }]);
+
+      const result = await service.bulkCreate('set-1', 'owner-1', {
+        cards: [
+          { front: 'hello', back: 'xin chào' },
+          { front: 'world', back: 'thế giới' },
+        ],
+      });
+
+      const savedArg = transactionalSave.mock.calls[0][0];
+      expect(savedArg).toHaveLength(1);
+      expect(savedArg[0]).toMatchObject({ front: 'world' });
+      expect(result.importedCount).toBe(1);
+      expect(result.duplicateCount).toBe(1);
+    });
+
+    it('does not treat front="a b"+back="c" as a duplicate of front="a"+back="b c"', async () => {
+      const result = await service.bulkCreate('set-1', 'owner-1', {
+        cards: [
+          { front: 'a b', back: 'c' },
+          { front: 'a', back: 'b c' },
+        ],
+      });
+
+      expect(result.importedCount).toBe(2);
+      expect(result.duplicateCount).toBe(0);
+    });
+
+    it('imports every card belonging to the correct set (never a different one from the URL)', async () => {
+      await service.bulkCreate('set-1', 'owner-1', { cards: [{ front: 'a', back: 'b' }] });
+
+      const savedArg = transactionalSave.mock.calls[0][0];
+      expect(savedArg[0].set).toEqual({ id: 'set-1' });
+    });
+
+    it('when every row is a duplicate, saves nothing and never calls incrementCardCount', async () => {
+      repo.find.mockResolvedValue([{ front: 'hello', back: 'xin chào' }]);
+
+      const result = await service.bulkCreate('set-1', 'owner-1', { cards: [{ front: 'hello', back: 'xin chào' }] });
+
+      expect(transactionalSave).not.toHaveBeenCalled();
+      expect(flashcardSetsService.incrementCardCount).not.toHaveBeenCalled();
+      expect(result).toEqual({ cards: [], totalReceived: 1, importedCount: 0, duplicateCount: 1 });
     });
   });
 });

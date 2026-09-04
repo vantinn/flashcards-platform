@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Flashcard } from './entities/flashcard.entity.js';
@@ -7,6 +8,24 @@ import { FlashcardSetsService } from '../flashcard-sets/flashcard-sets.service.j
 import type { CreateFlashcardDto } from './dto/create-flashcard.dto.js';
 import type { UpdateFlashcardDto } from './dto/update-flashcard.dto.js';
 import type { ReorderFlashcardsDto } from './dto/reorder-flashcards.dto.js';
+import type { BulkCreateFlashcardsDto } from './dto/bulk-create-flashcards.dto.js';
+
+export interface BulkCreateResult {
+  cards: Flashcard[];
+  totalReceived: number;
+  importedCount: number;
+  duplicateCount: number;
+}
+
+/**
+ * front+back, trimmed — the same pair (case-sensitive) is what "duplicate"
+ * means for bulk import. Joined with an escaped NUL character (never
+ * legitimately typed by a user) rather than a plain space, so front="a b"
+ * + back="c" can never collide with front="a" + back="b c".
+ */
+function duplicateKey(front: string, back: string): string {
+  return `${front.trim()}\u0000${back.trim()}`;
+}
 
 @Injectable()
 export class FlashcardsService {
@@ -14,6 +33,7 @@ export class FlashcardsService {
     @InjectRepository(Flashcard)
     private readonly flashcardsRepository: Repository<Flashcard>,
     private readonly flashcardSetsService: FlashcardSetsService,
+    private readonly configService: ConfigService,
   ) {}
 
   findBySet(setId: string): Promise<Flashcard[]> {
@@ -40,6 +60,73 @@ export class FlashcardsService {
     const saved = await this.flashcardsRepository.save(card);
     await this.flashcardSetsService.incrementCardCount(setId, 1);
     return saved;
+  }
+
+  /**
+   * Bulk Add Flashcards (copy/paste import). Follows the exact same
+   * ownership/position/business rules as create() — front/back validation
+   * already happened at the DTO layer (BulkFlashcardItemDto mirrors
+   * CreateFlashcardDto exactly), so this only adds what's specific to
+   * importing many rows at once: the configurable size ceiling, duplicate
+   * detection, and a single batched transactional insert instead of N
+   * separate writes.
+   *
+   * Duplicates (case-sensitive, trimmed front+back) are skipped rather than
+   * rejecting the whole request — this codebase has no uniqueness
+   * constraint on Flashcard.front/back today (manually creating the same
+   * card twice already works), so bulk import can't invent a stricter
+   * policy; it only protects against the specific failure mode a paste
+   * naturally invites (accidentally copying the same two rows twice). The
+   * skip is never silent — see BulkCreateResult's duplicateCount.
+   */
+  async bulkCreate(setId: string, userId: string, dto: BulkCreateFlashcardsDto): Promise<BulkCreateResult> {
+    await this.flashcardSetsService.assertOwnership(setId, userId);
+
+    const maxBulkImport = this.configService.get<number>('flashcards.maxBulkImport')!;
+    if (dto.cards.length > maxBulkImport) {
+      throw new BadRequestException(`A bulk import can contain at most ${maxBulkImport} cards.`);
+    }
+
+    const existingCards = await this.flashcardsRepository.find({
+      where: { set: { id: setId } },
+      select: { front: true, back: true },
+    });
+    const seen = new Set(existingCards.map((card) => duplicateKey(card.front, card.back)));
+
+    const toInsert: { front: string; back: string }[] = [];
+    for (const item of dto.cards) {
+      const key = duplicateKey(item.front, item.back);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      toInsert.push({ front: item.front.trim(), back: item.back.trim() });
+    }
+
+    const startingPosition = await this.flashcardsRepository.count({ where: { set: { id: setId } } });
+
+    const saved = await this.flashcardsRepository.manager.transaction(async (manager) => {
+      if (toInsert.length === 0) return [];
+      return manager.save(
+        toInsert.map((item, index) =>
+          manager.create(Flashcard, {
+            set: { id: setId },
+            front: item.front,
+            back: item.back,
+            position: startingPosition + index,
+          }),
+        ),
+      );
+    });
+
+    if (saved.length > 0) {
+      await this.flashcardSetsService.incrementCardCount(setId, saved.length);
+    }
+
+    return {
+      cards: saved,
+      totalReceived: dto.cards.length,
+      importedCount: saved.length,
+      duplicateCount: dto.cards.length - saved.length,
+    };
   }
 
   private async findWithOwnerOrFail(cardId: string): Promise<Flashcard> {

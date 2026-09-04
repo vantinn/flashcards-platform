@@ -39,6 +39,7 @@ describe('Authentication boundary (e2e)', () => {
     ['POST', `/flashcard-sets/${randomId}/duplicate`],
     ['GET', `/flashcard-sets/${randomId}/cards`],
     ['POST', `/flashcard-sets/${randomId}/cards`],
+    ['POST', `/flashcard-sets/${randomId}/cards/bulk`],
     ['PATCH', `/flashcard-sets/${randomId}/cards/reorder`],
     ['PATCH', `/flashcards/${randomId}`],
     ['DELETE', `/flashcards/${randomId}`],
