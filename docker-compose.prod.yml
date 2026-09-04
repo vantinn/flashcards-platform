@@ -60,9 +60,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-}
-      GMAIL_USER: ${GMAIL_USER:?GMAIL_USER must be set — required to send OTP emails in production}
-      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:?GMAIL_APP_PASSWORD must be set — required to send OTP emails in production}
-      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Flashcards}
+      RESEND_API_KEY: ${RESEND_API_KEY:?RESEND_API_KEY must be set — required to send OTP emails in production}
+      MAIL_FROM: "${MAIL_FROM:-Flashcards <noreply@flashcar.click>}"
       OTP_EXPIRATION_MINUTES: ${OTP_EXPIRATION_MINUTES:-5}
       OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-5}
       OTP_RESEND_COOLDOWN_SECONDS: ${OTP_RESEND_COOLDOWN_SECONDS:-60}
