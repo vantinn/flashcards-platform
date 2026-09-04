@@ -8,7 +8,8 @@ import { FlashcardSetCard } from "@/components/flashcards/flashcard-set-card";
 import { MasteryBreakdown } from "@/components/study/mastery-breakdown";
 import { serverApi, ApiError } from "@/lib/api-server";
 import { getLocale } from "@/lib/i18n/get-locale";
-import { getDictionary, createTranslator, type Translator } from "@/lib/i18n/dictionary";
+import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
+import { timeAgo } from "@/lib/time-ago";
 import type { PublicUser, FlashcardSet, StudySession, ProgressSummary, StudyStats } from "@/types/flashcard";
 import type { PaginatedResult } from "@/types/pagination";
 
@@ -31,17 +32,6 @@ async function loadDashboard() {
     }
     throw error;
   }
-}
-
-function timeAgo(iso: string, t: Translator): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diffMs / 60000);
-  if (minutes < 1) return t("dashboard.justNow");
-  if (minutes < 60) return t("dashboard.minutesAgo", { minutes });
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return t("dashboard.hoursAgo", { hours });
-  const days = Math.round(hours / 24);
-  return t("dashboard.daysAgo", { days });
 }
 
 export default async function DashboardPage() {

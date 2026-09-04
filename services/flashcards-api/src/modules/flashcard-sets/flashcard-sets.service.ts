@@ -97,6 +97,23 @@ export class FlashcardSetsService {
     return set;
   }
 
+  /**
+   * Gate for Like/Comment/Reply endpoints — deliberately stricter than
+   * findOneVisibleTo, which treats UNLISTED as viewable the same as PUBLIC.
+   * Social interaction must only ever be available on visibility === PUBLIC:
+   * UNLISTED is still "not indexed, but reachable by anyone with the link,"
+   * not "open for public discussion." findOneVisibleTo is reused first so a
+   * private set (not owned by the caller) still 404s rather than 403s,
+   * matching this service's existing existence-hiding rule.
+   */
+  async assertPublicForSocial(id: string, userId: string | undefined): Promise<FlashcardSet> {
+    const set = await this.findOneVisibleTo(id, userId);
+    if (set.visibility !== SetVisibility.PUBLIC) {
+      throw new ForbiddenException('This action is only available on public flashcard sets');
+    }
+    return set;
+  }
+
   async update(id: string, userId: string, dto: UpdateFlashcardSetDto): Promise<FlashcardSet> {
     const set = await this.assertOwnership(id, userId);
     Object.assign(set, {

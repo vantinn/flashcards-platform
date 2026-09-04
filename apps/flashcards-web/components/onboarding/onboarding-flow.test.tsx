@@ -26,6 +26,10 @@ function renderFlow(locale: "vi" | "en" = "vi") {
 
 afterEach(() => {
   cleanup();
+  // restoreAllMocks() only rewinds vi.spyOn mocks — api.patch here is a
+  // plain vi.fn() from the module factory above, so its call history would
+  // otherwise leak across tests in this file; clearAllMocks() resets that.
+  vi.clearAllMocks();
   vi.restoreAllMocks();
 });
 

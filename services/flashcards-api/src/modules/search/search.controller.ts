@@ -1,4 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { SearchService } from './search.service.js';
 import { SearchSetsDto } from './dto/search-sets.dto.js';
 
@@ -9,7 +11,7 @@ export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
   @Get()
-  search(@Query() query: SearchSetsDto) {
-    return this.searchService.searchPublicSets(query);
+  search(@Query() query: SearchSetsDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.searchService.searchPublicSets(query, user.id);
   }
 }
