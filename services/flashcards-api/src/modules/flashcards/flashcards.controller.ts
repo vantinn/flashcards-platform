@@ -5,6 +5,7 @@ import { FlashcardSetsService } from '../flashcard-sets/flashcard-sets.service.j
 import { FlashcardsService } from './flashcards.service.js';
 import { CreateFlashcardDto } from './dto/create-flashcard.dto.js';
 import { ReorderFlashcardsDto } from './dto/reorder-flashcards.dto.js';
+import { BulkCreateFlashcardsDto } from './dto/bulk-create-flashcards.dto.js';
 
 @Controller('flashcard-sets/:setId/cards')
 export class FlashcardsController {
@@ -29,6 +30,17 @@ export class FlashcardsController {
     @Body() dto: CreateFlashcardDto,
   ) {
     return this.flashcardsService.create(setId, user.id, dto);
+  }
+
+  // "Thêm nhiều thẻ" (Bulk Add Flashcards, copy/paste import) — see
+  // FlashcardsService.bulkCreate for validation/duplicate/transaction detail.
+  @Post('bulk')
+  bulkCreate(
+    @Param('setId', ParseUUIDPipe) setId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: BulkCreateFlashcardsDto,
+  ) {
+    return this.flashcardsService.bulkCreate(setId, user.id, dto);
   }
 
   @Patch('reorder')

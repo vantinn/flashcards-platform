@@ -8,6 +8,7 @@ import authConfig from './config/auth.config.js';
 import redisConfig from './config/redis.config.js';
 import mailConfig from './config/mail.config.js';
 import otpConfig from './config/otp.config.js';
+import flashcardsConfig from './config/flashcards.config.js';
 import { RedisModule } from './redis/redis.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -38,7 +39,7 @@ import { SocialModule } from './modules/social/social.module.js';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, authConfig, redisConfig, mailConfig, otpConfig],
+      load: [appConfig, databaseConfig, authConfig, redisConfig, mailConfig, otpConfig, flashcardsConfig],
     }),
     RedisModule,
     TypeOrmModule.forRootAsync({

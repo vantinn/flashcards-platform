@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -7,8 +8,16 @@ import helmet from 'helmet';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  // Express's default JSON body limit (100kb) is comfortably enough for
+  // every existing endpoint, but not for Bulk Add Flashcards: at the
+  // existing 2000-char max per front/back field, a full MAX_BULK_FLASHCARDS
+  // paste can approach ~2MB. DTO-level array/string length limits remain
+  // the real validation boundary — this just stops a legitimate large
+  // paste from being rejected before it ever reaches them.
+  app.useBodyParser('json', { limit: '2mb' });
 
   // Sets the standard hardening headers (X-Content-Type-Options,
   // X-Frame-Options, a conservative CSP, etc.) that a JSON-only API has no

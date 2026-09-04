@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ArrowUpIcon, ArrowDownIcon } from "@/components/ui/icons";
+import { BulkAddDialog } from "@/components/flashcards/bulk-add-dialog";
 import { api, ApiError } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/error-message";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -37,7 +38,13 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+
   const newFrontRef = useRef<HTMLTextAreaElement>(null);
+
+  function handleBulkImported(imported: Flashcard[]) {
+    setCards((current) => [...current, ...imported]);
+  }
 
   async function handleAdd(event: FormEvent) {
     event.preventDefault();
@@ -144,7 +151,12 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
     <div className="flex flex-col gap-6">
       <Card>
         <CardBody>
-          <h2 className="mb-4 font-semibold text-text-dark">{t("cards.addCard")}</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-text-dark">{t("cards.addCard")}</h2>
+            <Button type="button" variant="outline" size="sm" onClick={() => setBulkDialogOpen(true)}>
+              {t("cards.bulk.openButton")}
+            </Button>
+          </div>
           <form onSubmit={handleAdd} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="new-front" className="text-xs font-medium text-text-muted">
@@ -265,6 +277,14 @@ export function FlashcardEditor({ setId, initialCards }: FlashcardEditorProps) {
         busy={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <BulkAddDialog
+        open={bulkDialogOpen}
+        onClose={() => setBulkDialogOpen(false)}
+        setId={setId}
+        existingCards={cards}
+        onImported={handleBulkImported}
       />
     </div>
   );
