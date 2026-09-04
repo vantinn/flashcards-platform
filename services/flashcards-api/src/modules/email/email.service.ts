@@ -1,6 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createTransport, type Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 
 interface OtpEmailContent {
   subject: string;
@@ -51,9 +51,9 @@ function renderText(content: OtpEmailContent): string {
 }
 
 /**
- * Thin wrapper around a Gmail SMTP transporter. Kept out of AuthService so
- * SMTP concerns (transport setup, templating, from-address) live in exactly
- * one place, and so AuthService's tests never need a real transporter.
+ * Thin wrapper around the Resend API. Kept out of AuthService so email-
+ * provider concerns (client setup, templating, from-address) live in
+ * exactly one place, and so AuthService's tests never need a real client.
  *
  * Never logs the OTP code itself, per the OTP-as-sensitive-authentication-data
  * requirement — only that a send was attempted and whether it succeeded.
@@ -61,26 +61,17 @@ function renderText(content: OtpEmailContent): string {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly transporter: Transporter | null;
-  private readonly fromAddress: string;
-  private readonly fromName: string;
+  private readonly resend: Resend | null;
+  private readonly from: string;
 
   constructor(private readonly configService: ConfigService) {
-    const gmailUser = this.configService.get<string>('mail.gmailUser');
-    const gmailAppPassword = this.configService.get<string>('mail.gmailAppPassword');
-    this.fromName = this.configService.get<string>('mail.fromName')!;
-    this.fromAddress = gmailUser ?? '';
+    const apiKey = this.configService.get<string>('mail.resendApiKey');
+    this.from = this.configService.get<string>('mail.from')!;
 
     // Left unconfigured in dev is a valid state (see mail.config.ts) — sends
-    // just fail loudly and specifically instead of throwing on an
-    // undefined transporter deep inside nodemailer.
-    this.transporter =
-      gmailUser && gmailAppPassword
-        ? createTransport({
-            service: 'gmail',
-            auth: { user: gmailUser, pass: gmailAppPassword },
-          })
-        : null;
+    // just fail loudly and specifically instead of throwing deep inside the
+    // Resend client on an invalid/missing key.
+    this.resend = apiKey ? new Resend(apiKey) : null;
   }
 
   async sendRegistrationOtp(email: string, code: string, expiresInMinutes: number): Promise<void> {
@@ -104,21 +95,33 @@ export class EmailService {
   }
 
   private async send(to: string, content: OtpEmailContent): Promise<void> {
-    if (!this.transporter) {
-      this.logger.error('Email send skipped: Gmail credentials are not configured (GMAIL_USER/GMAIL_APP_PASSWORD).');
+    if (!this.resend) {
+      this.logger.error('Email send skipped: Resend is not configured (RESEND_API_KEY).');
       throw new ServiceUnavailableException('Email delivery is not available right now. Please try again later.');
     }
 
     try {
-      await this.transporter.sendMail({
-        from: `"${this.fromName}" <${this.fromAddress}>`,
+      // The Resend SDK reports API-level failures via `error` on the
+      // resolved response rather than throwing — handled the same safe way
+      // as a thrown/network-level failure below. Only ever logs the short
+      // error message/code, never the full response (which can otherwise
+      // echo back request details) and never the API key.
+      const { error } = await this.resend.emails.send({
+        from: this.from,
         to,
         subject: content.subject,
         html: renderHtml(content),
         text: renderText(content),
       });
+      if (error) {
+        this.logger.error(`Email send failed: subject="${content.subject}" reason=${error.name}: ${error.message}`);
+        throw new ServiceUnavailableException('Email delivery is not available right now. Please try again later.');
+      }
       this.logger.log(`Email sent: subject="${content.subject}"`);
     } catch (error) {
+      if (error instanceof ServiceUnavailableException) {
+        throw error;
+      }
       const message = error instanceof Error ? error.message : 'unknown error';
       this.logger.error(`Email send failed: subject="${content.subject}" reason=${message}`);
       throw new ServiceUnavailableException('Email delivery is not available right now. Please try again later.');

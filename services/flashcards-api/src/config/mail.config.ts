@@ -2,14 +2,13 @@ import { registerAs } from '@nestjs/config';
 import { requiredInProduction } from './require-in-production.js';
 
 /**
- * Gmail credentials are only required to *start* the app in production —
- * see requiredInProduction. In development they may be left blank; email
- * sending simply fails with a clear error when actually attempted (see
- * EmailService), so local work that doesn't touch the OTP flow isn't
- * blocked on having real Gmail creds.
+ * Resend credentials/sender are only required to *start* the app in
+ * production — see requiredInProduction. In development they may be left
+ * blank; email sending simply fails with a clear error when actually
+ * attempted (see EmailService), so local work that doesn't touch the OTP
+ * flow isn't blocked on having a real Resend API key.
  */
 export default registerAs('mail', () => ({
-  gmailUser: requiredInProduction(process.env.GMAIL_USER, '', 'GMAIL_USER'),
-  gmailAppPassword: requiredInProduction(process.env.GMAIL_APP_PASSWORD, '', 'GMAIL_APP_PASSWORD'),
-  fromName: process.env.MAIL_FROM_NAME ?? 'Flashcards',
+  resendApiKey: requiredInProduction(process.env.RESEND_API_KEY, '', 'RESEND_API_KEY'),
+  from: requiredInProduction(process.env.MAIL_FROM, '', 'MAIL_FROM'),
 }));
