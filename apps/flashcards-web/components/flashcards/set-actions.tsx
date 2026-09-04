@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/error-message";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface SetActionsProps {
   setId: string;
@@ -14,6 +16,7 @@ export interface SetActionsProps {
 }
 
 export function SetActions({ setId, setTitle, canStudy }: SetActionsProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -28,7 +31,7 @@ export function SetActions({ setId, setTitle, canStudy }: SetActionsProps) {
       router.push("/sets");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not delete this set.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("sets.couldNotDelete"));
       setDeleting(false);
       setConfirmOpen(false);
     }
@@ -42,7 +45,7 @@ export function SetActions({ setId, setTitle, canStudy }: SetActionsProps) {
       router.push(`/sets/${copy.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not duplicate this set.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("sets.couldNotDuplicate"));
       setDuplicating(false);
     }
   }
@@ -51,28 +54,28 @@ export function SetActions({ setId, setTitle, canStudy }: SetActionsProps) {
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap justify-end gap-2">
         <Link href={`/sets/${setId}/settings`}>
-          <Button variant="outline">Edit details</Button>
+          <Button variant="outline">{t("sets.editDetails")}</Button>
         </Link>
         <Link href={`/sets/${setId}/edit`}>
-          <Button variant="outline">Edit cards</Button>
+          <Button variant="outline">{t("sets.editCards")}</Button>
         </Link>
         <Link href={`/sets/${setId}/study`}>
-          <Button disabled={!canStudy}>Start studying</Button>
+          <Button disabled={!canStudy}>{t("sets.startStudying")}</Button>
         </Link>
         <Button variant="outline" onClick={handleDuplicate} disabled={duplicating}>
-          {duplicating ? "Duplicating..." : "Duplicate"}
+          {duplicating ? t("sets.duplicating") : t("sets.duplicate")}
         </Button>
         <Button variant="danger" onClick={() => setConfirmOpen(true)}>
-          Delete
+          {t("sets.delete")}
         </Button>
       </div>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Delete this set?"
-        description={`"${setTitle}" and all of its cards will be permanently deleted. This can't be undone.`}
-        confirmLabel="Delete set"
+        title={t("sets.deleteConfirmTitle")}
+        description={t("sets.deleteConfirmDescription", { title: setTitle })}
+        confirmLabel={t("sets.deleteConfirmLabel")}
         danger
         busy={deleting}
         onConfirm={handleDelete}

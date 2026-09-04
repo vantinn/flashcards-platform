@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface MobileNavProps {
   links: { href: string; label: string }[];
 }
 
 export function MobileNav({ links }: MobileNavProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
@@ -15,7 +18,7 @@ export function MobileNav({ links }: MobileNavProps) {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label={open ? t("nav.closeMenu") : t("nav.openMenu")}
         aria-expanded={open}
         className="flex h-10 w-10 items-center justify-center rounded-card text-text-dark hover:bg-black/5"
       >
@@ -44,6 +47,9 @@ export function MobileNav({ links }: MobileNavProps) {
                 </Link>
               </li>
             ))}
+            <li className="px-4 py-3">
+              <LanguageSwitcher />
+            </li>
           </ul>
         </nav>
       ) : null}

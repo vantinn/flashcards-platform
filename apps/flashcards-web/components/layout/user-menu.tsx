@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import type { PublicUser } from "@/types/flashcard";
 
 export interface UserMenuProps {
@@ -10,6 +11,7 @@ export interface UserMenuProps {
 }
 
 export function UserMenu({ user }: UserMenuProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -35,7 +37,7 @@ export function UserMenu({ user }: UserMenuProps) {
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Account menu"
+        aria-label={t("nav.accountMenu")}
         className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-white"
       >
         {user.avatarUrl ? (
@@ -70,7 +72,7 @@ export function UserMenu({ user }: UserMenuProps) {
               className="block px-4 py-2 text-sm text-text-dark hover:bg-black/5"
               onClick={() => setOpen(false)}
             >
-              Dashboard
+              {t("nav.dashboard")}
             </Link>
             <Link
               href="/sets"
@@ -78,7 +80,7 @@ export function UserMenu({ user }: UserMenuProps) {
               className="block px-4 py-2 text-sm text-text-dark hover:bg-black/5"
               onClick={() => setOpen(false)}
             >
-              My sets
+              {t("nav.mySets")}
             </Link>
             <Link
               href="/profile"
@@ -86,7 +88,7 @@ export function UserMenu({ user }: UserMenuProps) {
               className="block px-4 py-2 text-sm text-text-dark hover:bg-black/5"
               onClick={() => setOpen(false)}
             >
-              Profile
+              {t("footer.profile")}
             </Link>
             <button
               type="button"
@@ -95,7 +97,7 @@ export function UserMenu({ user }: UserMenuProps) {
               disabled={loggingOut}
               className="block w-full px-4 py-2 text-left text-sm text-danger hover:bg-danger/5 disabled:opacity-50"
             >
-              {loggingOut ? "Logging out..." : "Log out"}
+              {loggingOut ? t("nav.loggingOut") : t("nav.logout")}
             </button>
           </div>
         </>

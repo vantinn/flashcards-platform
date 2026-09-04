@@ -16,10 +16,24 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Deliberately excludes /sets/:id (viewing) — public and unlisted sets must
-// stay reachable by anonymous visitors coming from /explore; the backend's
-// findOneVisibleTo already 404s a private one for them. /sets/:id/study is
-// gated because starting a session requires an authenticated user.
+// The whole product is authenticated-only: "public" only ever means visible
+// to any signed-in user, never to an anonymous visitor. /sets/:id (viewing)
+// and /explore (browsing public sets) are included here for that reason —
+// the backend's findOneVisibleTo/search still apply the private/unlisted/
+// public rules on top, once the caller is known to be signed in.
 export const config = {
-  matcher: ["/dashboard", "/sets", "/sets/create", "/sets/:id/edit", "/sets/:id/settings", "/sets/:id/study", "/profile"],
+  matcher: [
+    "/dashboard",
+    "/explore",
+    "/sets",
+    "/sets/create",
+    "/sets/:id",
+    "/sets/:id/edit",
+    "/sets/:id/settings",
+    "/sets/:id/study",
+    "/sets/:id/cram",
+    "/sets/:id/deep-learning",
+    "/profile",
+    "/onboarding",
+  ],
 };

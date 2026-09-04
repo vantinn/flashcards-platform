@@ -2,6 +2,8 @@ import { Module, type Provider } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../users/users.module.js';
+import { OtpModule } from '../otp/otp.module.js';
+import { EmailModule } from '../email/email.module.js';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
@@ -17,7 +19,7 @@ const googleOAuthConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.en
 const googleProviders: Provider[] = googleOAuthConfigured ? [GoogleStrategy] : [];
 
 @Module({
-  imports: [UsersModule, PassportModule, JwtModule.register({})],
+  imports: [UsersModule, PassportModule, JwtModule.register({}), OtpModule, EmailModule],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, ...googleProviders],
   exports: [AuthService],

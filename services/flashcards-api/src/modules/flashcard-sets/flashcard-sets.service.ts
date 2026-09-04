@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
-import { FlashcardSet, SetVisibility } from './entities/flashcard-set.entity.js';
+import { FlashcardSet, SetLanguage, SetVisibility } from './entities/flashcard-set.entity.js';
 import { Flashcard } from '../flashcards/entities/flashcard.entity.js';
 import type { CreateFlashcardSetDto } from './dto/create-flashcard-set.dto.js';
 import type { UpdateFlashcardSetDto } from './dto/update-flashcard-set.dto.js';
@@ -22,7 +22,7 @@ export class FlashcardSetsService {
       title: dto.title,
       description: dto.description ?? null,
       visibility: dto.visibility ?? SetVisibility.PRIVATE,
-      category: dto.category ?? null,
+      language: dto.language ?? SetLanguage.FREE,
       creator: { id: creatorId },
     });
     const saved = await this.setsRepository.save(set);
@@ -97,13 +97,30 @@ export class FlashcardSetsService {
     return set;
   }
 
+  /**
+   * Gate for Like/Comment/Reply endpoints — deliberately stricter than
+   * findOneVisibleTo, which treats UNLISTED as viewable the same as PUBLIC.
+   * Social interaction must only ever be available on visibility === PUBLIC:
+   * UNLISTED is still "not indexed, but reachable by anyone with the link,"
+   * not "open for public discussion." findOneVisibleTo is reused first so a
+   * private set (not owned by the caller) still 404s rather than 403s,
+   * matching this service's existing existence-hiding rule.
+   */
+  async assertPublicForSocial(id: string, userId: string | undefined): Promise<FlashcardSet> {
+    const set = await this.findOneVisibleTo(id, userId);
+    if (set.visibility !== SetVisibility.PUBLIC) {
+      throw new ForbiddenException('This action is only available on public flashcard sets');
+    }
+    return set;
+  }
+
   async update(id: string, userId: string, dto: UpdateFlashcardSetDto): Promise<FlashcardSet> {
     const set = await this.assertOwnership(id, userId);
     Object.assign(set, {
       ...(dto.title !== undefined ? { title: dto.title } : {}),
       ...(dto.description !== undefined ? { description: dto.description } : {}),
       ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
-      ...(dto.category !== undefined ? { category: dto.category } : {}),
+      ...(dto.language !== undefined ? { language: dto.language } : {}),
     });
     const saved = await this.setsRepository.save(set);
     await this.invalidateSearchCache();
@@ -117,9 +134,10 @@ export class FlashcardSetsService {
   }
 
   /**
-   * Only called from create/update/remove — title, category, and
-   * visibility are the only fields Explore's search can filter or match
-   * on. incrementStudyCount() deliberately does NOT invalidate: it only
+   * Only called from create/update/remove — title, language (the official
+   * Set Category), and visibility are the only fields Explore's search can
+   * filter or match on. incrementStudyCount() deliberately does NOT
+   * invalidate: it only
    * shifts ordering (most-studied-first), fires on every completed study
    * session, and a cache that gets flushed that often stops caching
    * anything. A stale ordering for up to the cache's TTL is a fine
@@ -131,18 +149,18 @@ export class FlashcardSetsService {
   }
 
   /**
-   * Copies a set (and all its cards) into the caller's own library. Source
-   * only needs to be *visible* to the caller, not owned — this is how a
-   * public/unlisted set gets "saved" by someone other than its creator.
-   * Always lands as private regardless of the source's visibility: a copy
-   * shouldn't silently become public just because the original was.
+   * Copies a set (and all its cards) into the caller's own library.
+   * Owner-only, same as update()/remove() — a public set can be studied by
+   * anyone but only its creator may derive a copy from it. Always lands as
+   * private regardless of the source's visibility: a copy shouldn't
+   * silently become public just because the original was.
    *
    * The set row and its cards are written in one transaction — without
    * that, a crash or failed write between the two save() calls would leave
    * a set whose cardCount says N but that actually has zero cards.
    */
   async duplicate(id: string, userId: string): Promise<FlashcardSet> {
-    const source = await this.findOneVisibleTo(id, userId);
+    const source = await this.assertOwnership(id, userId);
     const sortedCards = [...source.cards].sort((a, b) => a.position - b.position);
 
     const copy = await this.setsRepository.manager.transaction(async (manager) => {
@@ -150,7 +168,7 @@ export class FlashcardSetsService {
         manager.create(FlashcardSet, {
           title: `${source.title} (copy)`,
           description: source.description,
-          category: source.category,
+          language: source.language,
           visibility: SetVisibility.PRIVATE,
           creator: { id: userId },
           cardCount: sortedCards.length,

@@ -10,11 +10,11 @@ export interface SearchBarProps {
   /** Controlled mode (e.g. instant client-side filtering of an already-fetched list). */
   value?: string;
   onChange?: (value: string) => void;
-  placeholder?: string;
+  placeholder: string;
   className?: string;
 }
 
-export function SearchBar({ name = "q", defaultValue, value, onChange, placeholder = "Search...", className }: SearchBarProps) {
+export function SearchBar({ name = "q", defaultValue, value, onChange, placeholder, className }: SearchBarProps) {
   const isControlled = value !== undefined;
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {

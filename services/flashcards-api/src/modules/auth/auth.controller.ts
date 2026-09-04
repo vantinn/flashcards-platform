@@ -11,6 +11,10 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
 import { GoogleTokenDto } from './dto/google-token.dto.js';
+import { VerifyOtpDto } from './dto/verify-otp.dto.js';
+import { ResendOtpDto } from './dto/resend-otp.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import type { GoogleProfile } from './strategies/google.strategy.js';
 
 interface PublicUserWithTokens extends PublicUser {
@@ -26,6 +30,12 @@ const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days, mirrors 
 const CREDENTIAL_RATE_LIMIT = { limit: 10, windowMs: 60_000 };
 const REFRESH_RATE_LIMIT = { limit: 30, windowMs: 60_000 };
 
+// OTP endpoints get their own IP-level ceiling on top of the per-account
+// cooldown/hourly-cap enforced in OtpService — this is the first line of
+// defense against a single IP hammering many different email addresses.
+const OTP_VERIFY_RATE_LIMIT = { limit: 15, windowMs: 60_000 };
+const OTP_REQUEST_RATE_LIMIT = { limit: 5, windowMs: 60_000 };
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -34,14 +44,56 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  // No tokens/cookies here — the account isn't usable until the OTP sent
+  // to this address is confirmed via /auth/verify-registration.
   @Public()
   @UseGuards(rateLimit(CREDENTIAL_RATE_LIMIT))
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
-    const { user, tokens } = await this.authService.register(dto);
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
+
+  @Public()
+  @UseGuards(rateLimit(OTP_VERIFY_RATE_LIMIT))
+  @Post('verify-registration')
+  @HttpCode(HttpStatus.OK)
+  async verifyRegistration(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res: Response) {
+    const { user, tokens } = await this.authService.verifyRegistration(dto);
     this.setAuthCookies(res, tokens);
     return this.toPublicWithTokens(user, tokens);
+  }
+
+  @Public()
+  @UseGuards(rateLimit(OTP_REQUEST_RATE_LIMIT))
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto);
+  }
+
+  @Public()
+  @UseGuards(rateLimit(OTP_REQUEST_RATE_LIMIT))
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Public()
+  @UseGuards(rateLimit(OTP_VERIFY_RATE_LIMIT))
+  @Post('verify-reset-otp')
+  @HttpCode(HttpStatus.OK)
+  async verifyResetOtp(@Body() dto: VerifyOtpDto) {
+    return this.authService.verifyResetOtp(dto);
+  }
+
+  @Public()
+  @UseGuards(rateLimit(CREDENTIAL_RATE_LIMIT))
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Public()
@@ -84,8 +136,13 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    // path must match what setAuthCookies() set (Express's clearCookie
+    // defaults path to '/' anyway, but this makes the match explicit rather
+    // than relying on that default staying true across versions) — a
+    // mismatched path means the browser won't recognize this as the same
+    // cookie and silently keeps the old one alive.
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
   }
 
   @Public()
@@ -117,6 +174,16 @@ export class AuthController {
     return { ...this.usersService.toPublic(user), accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
   }
 
+  // sameSite stays 'lax' (not 'none') in every environment, including
+  // production: the frontend (apps/flashcards-web) proxies its browser-side
+  // API calls through its own origin via Next.js rewrites (see
+  // next.config.ts there) specifically so these cookies are always set as
+  // first-party, same-site cookies from the browser's point of view — even
+  // though the frontend (Vercel) and this API (Railway) are different
+  // registrable domains at the HTTP level. Deliberately not set: no
+  // `domain` attribute (host-only cookie — this API's own host is the only
+  // one that should ever receive it), and no `secure: false` fallback in
+  // dev beyond NODE_ENV driving it automatically (plain HTTP locally).
   private setAuthCookies(res: Response, tokens: TokenPair) {
     const isProduction = process.env.NODE_ENV === 'production';
 

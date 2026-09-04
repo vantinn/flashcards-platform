@@ -8,23 +8,28 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api-client";
-import type { FlashcardSet, FlashcardSetDetail, SetVisibility } from "@/types/flashcard";
+import { getErrorMessage } from "@/lib/error-message";
+import { SET_LANGUAGES, setLanguageLabel } from "@/lib/set-language";
+import { SET_VISIBILITIES, setVisibilityHint } from "@/lib/set-visibility";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import type { FlashcardSet, FlashcardSetDetail, SetLanguage, SetVisibility } from "@/types/flashcard";
 
 export interface EditSetFormProps {
   set: FlashcardSetDetail;
 }
 
-// Mirrors CreateSetPage's form fields exactly (title/description/category/
+// Mirrors CreateSetPage's form fields exactly (title/description/Danh mục/
 // visibility) — this was the one CRUD gap the cross-platform audit found:
 // Android and iOS both had a dedicated "edit set details" screen, but the
 // web app's "Edit" button on a set only ever opened the card editor, with
 // no way to change a set's title, description, category, or visibility
 // after creation.
 export function EditSetForm({ set }: EditSetFormProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [title, setTitle] = useState(set.title);
   const [description, setDescription] = useState(set.description ?? "");
-  const [category, setCategory] = useState(set.category ?? "");
+  const [language, setLanguage] = useState<SetLanguage>(set.language);
   const [visibility, setVisibility] = useState<SetVisibility>(set.visibility);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -37,13 +42,13 @@ export function EditSetForm({ set }: EditSetFormProps) {
       await api.patch<FlashcardSet>(`/flashcard-sets/${set.id}`, {
         title,
         description: description || undefined,
-        category: category || undefined,
+        language,
         visibility,
       });
       router.push(`/sets/${set.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof ApiError ? getErrorMessage(err, t) : t("common.somethingWrong"));
     } finally {
       setSubmitting(false);
     }
@@ -55,7 +60,7 @@ export function EditSetForm({ set }: EditSetFormProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="title">
-              Title
+              {t("sets.titleLabel")}
             </label>
             <Input
               id="title"
@@ -68,7 +73,7 @@ export function EditSetForm({ set }: EditSetFormProps) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="description">
-              Description
+              {t("sets.descriptionLabel")}
             </label>
             <Textarea
               id="description"
@@ -78,36 +83,39 @@ export function EditSetForm({ set }: EditSetFormProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-text-dark" htmlFor="category">
-              Category <span className="font-normal text-text-muted">(optional)</span>
+            <label className="text-sm font-medium text-text-dark" htmlFor="language">
+              {t("category.label")}
             </label>
-            <Input
-              id="category"
-              maxLength={100}
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-            />
+            <Select id="language" value={language} onChange={(event) => setLanguage(event.target.value as SetLanguage)}>
+              {SET_LANGUAGES.map((value) => (
+                <option key={value} value={value}>
+                  {setLanguageLabel(value, t)}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-dark" htmlFor="visibility">
-              Visibility
+              {t("sets.visibilityLabel")}
             </label>
             <Select
               id="visibility"
               value={visibility}
               onChange={(event) => setVisibility(event.target.value as SetVisibility)}
             >
-              <option value="private">Private — only you</option>
-              <option value="unlisted">Unlisted — anyone with the link</option>
-              <option value="public">Public — discoverable in Explore</option>
+              {SET_VISIBILITIES.map((value) => (
+                <option key={value} value={value}>
+                  {setVisibilityHint(value, t)}
+                </option>
+              ))}
             </Select>
           </div>
 
           {error ? <p className="text-sm text-danger">{error}</p> : null}
 
           <Button type="submit" disabled={submitting || !title}>
-            {submitting ? "Saving..." : "Save changes"}
+            {submitting ? t("sets.saving") : t("sets.saveChanges")}
           </Button>
         </form>
       </CardBody>

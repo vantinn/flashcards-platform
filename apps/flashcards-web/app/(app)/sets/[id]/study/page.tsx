@@ -1,10 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PageContainer } from "@/components/ui/page-container";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StudyPlayer } from "@/components/study/study-player";
 import { serverApi, ApiError } from "@/lib/api-server";
+import { speechLangFor } from "@/lib/set-language";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
 import type { FlashcardSetDetail } from "@/types/flashcard";
 
 async function loadSet(id: string) {
@@ -14,13 +17,21 @@ async function loadSet(id: string) {
     if (error instanceof ApiError && error.status === 404) {
       notFound();
     }
+    // Defense-in-depth: proxy.ts already blocks an anonymous request before
+    // it reaches this page, but a stale-but-present cookie can still fail
+    // backend auth here — send it through the same login flow rather than
+    // rendering the uncaught-error page.
+    if (error instanceof ApiError && error.status === 401) {
+      redirect(`/login?from=${encodeURIComponent(`/sets/${id}/study`)}`);
+    }
     throw error;
   }
 }
 
 export default async function StudySetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const set = await loadSet(id);
+  const [set, locale] = await Promise.all([loadSet(id), getLocale()]);
+  const t = createTranslator(getDictionary(locale));
 
   if (set.cards.length === 0) {
     return (
@@ -28,10 +39,10 @@ export default async function StudySetPage({ params }: { params: Promise<{ id: s
         <Card className="w-full max-w-md">
           <CardBody className="flex flex-col items-center gap-3 py-12">
             <p className="text-sm font-semibold uppercase tracking-wide text-primary">{set.title}</p>
-            <h1 className="text-xl font-bold text-text-dark">This set has no cards yet</h1>
-            <p className="text-sm text-text-muted">Add a few cards before starting a study session.</p>
+            <h1 className="text-xl font-bold text-text-dark">{t("study.noCardsTitle")}</h1>
+            <p className="text-sm text-text-muted">{t("study.noCardsDesc")}</p>
             <Link href={`/sets/${set.id}`}>
-              <Button variant="outline">Back to set</Button>
+              <Button variant="outline">{t("study.backToSet")}</Button>
             </Link>
           </CardBody>
         </Card>
@@ -41,7 +52,7 @@ export default async function StudySetPage({ params }: { params: Promise<{ id: s
 
   return (
     <PageContainer className="flex flex-1 flex-col">
-      <StudyPlayer setId={set.id} setTitle={set.title} cards={set.cards} />
+      <StudyPlayer setId={set.id} setTitle={set.title} cards={set.cards} language={speechLangFor(set.language)} />
     </PageContainer>
   );
 }
