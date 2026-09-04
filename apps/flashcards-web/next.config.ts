@@ -27,6 +27,24 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+
+  // Proxies the browser's same-origin /api/v1/* calls through to the real
+  // backend (see lib/api-client.ts). This is what makes the httpOnly auth
+  // cookies genuinely first-party: the frontend (Vercel) and backend
+  // (Railway) are different registrable domains, so a cookie set directly
+  // by a cross-site response is invisible to this app's own proxy.ts /
+  // Server Components no matter its SameSite/Secure attributes — cookies
+  // are scoped by domain, not by CORS or fetch credentials mode. Routing
+  // browser requests through this app's own origin first sidesteps that
+  // entirely, and is also more robust than SameSite=None cross-site cookies
+  // against browsers that restrict third-party cookies by default.
+  async rewrites() {
+    const backendUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1").replace(
+      /\/api\/v1\/?$/,
+      "",
+    );
+    return [{ source: "/api/v1/:path*", destination: `${backendUrl}/api/v1/:path*` }];
+  },
 };
 
 export default nextConfig;

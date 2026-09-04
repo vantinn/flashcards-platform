@@ -1,5 +1,14 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
 const isBrowser = typeof window !== "undefined";
+
+// The browser calls a same-origin, relative /api/v1 path — Next.js rewrites
+// (see next.config.ts) proxy it to the real backend, which is what makes
+// the httpOnly auth cookies first-party (see the rewrites() comment there
+// for why a cross-site cookie can't just be fixed with SameSite alone).
+// Server-side calls (SSR / Server Components, via lib/api-server.ts) skip
+// that hop and hit the backend directly — there's no browser cookie jar
+// involved server-side, so cookies are forwarded manually instead
+// (cookieHeader) and same-origin-ness doesn't apply.
+const API_URL = isBrowser ? "/api/v1" : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1");
 
 export class ApiError extends Error {
   constructor(
@@ -49,10 +58,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const response = await fetch(`${API_URL}${path}`, {
     ...rest,
-    // Cross-origin (different port) but same-site in dev/prod, so the
-    // SameSite=Lax auth cookies still flow as long as credentials are
-    // explicitly requested — the browser does not include them by default
-    // on cross-origin fetches.
+    // Same-origin now that API_URL is relative in the browser (see above),
+    // so cookies flow by default — kept explicit as defense-in-depth and
+    // because server-side calls (API_URL = the real backend origin) are
+    // genuinely cross-origin and do need this.
     credentials: "include",
     headers: {
       "Content-Type": "application/json",

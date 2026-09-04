@@ -136,8 +136,13 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    // path must match what setAuthCookies() set (Express's clearCookie
+    // defaults path to '/' anyway, but this makes the match explicit rather
+    // than relying on that default staying true across versions) — a
+    // mismatched path means the browser won't recognize this as the same
+    // cookie and silently keeps the old one alive.
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
   }
 
   @Public()
@@ -169,6 +174,16 @@ export class AuthController {
     return { ...this.usersService.toPublic(user), accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
   }
 
+  // sameSite stays 'lax' (not 'none') in every environment, including
+  // production: the frontend (apps/flashcards-web) proxies its browser-side
+  // API calls through its own origin via Next.js rewrites (see
+  // next.config.ts there) specifically so these cookies are always set as
+  // first-party, same-site cookies from the browser's point of view — even
+  // though the frontend (Vercel) and this API (Railway) are different
+  // registrable domains at the HTTP level. Deliberately not set: no
+  // `domain` attribute (host-only cookie — this API's own host is the only
+  // one that should ever receive it), and no `secure: false` fallback in
+  // dev beyond NODE_ENV driving it automatically (plain HTTP locally).
   private setAuthCookies(res: Response, tokens: TokenPair) {
     const isProduction = process.env.NODE_ENV === 'production';
 
