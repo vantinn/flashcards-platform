@@ -10,11 +10,15 @@ export type CardRating = "again" | "hard" | "good" | "easy";
  */
 export type SetLanguage = "english" | "chinese" | "free";
 
+export type Gender = "male" | "female";
+
 export interface PublicUser {
   id: string;
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  gender: Gender | null;
+  onboardingCompleted: boolean;
 }
 
 export interface FlashcardSet {

@@ -12,6 +12,11 @@ import { FlashcardSet } from '../../flashcard-sets/entities/flashcard-set.entity
 import { StudySession } from '../../study/entities/study-session.entity.js';
 import { StudyProgress } from '../../progress/entities/study-progress.entity.js';
 
+export enum Gender {
+  MALE = 'male',
+  FEMALE = 'female',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -31,6 +36,26 @@ export class User {
 
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
   avatarUrl: string | null;
+
+  // Set during onboarding (required step 1). Nullable because pre-existing
+  // accounts (from before onboarding existed) and not-yet-onboarded new
+  // accounts both have no value here — see onboardingCompletedAt below for
+  // how those two cases are told apart.
+  @Column({ type: 'enum', enum: Gender, nullable: true })
+  gender: Gender | null;
+
+  // Onboarding's completion marker — set once the required gender step is
+  // saved (see UsersService.completeOnboarding). Deliberately a nullable
+  // timestamp rather than a plain boolean, matching emailVerifiedAt's
+  // pattern below. The AddUserOnboarding migration backfills this for every
+  // account that existed before onboarding shipped, so only genuinely new
+  // signups (created after that migration ran) start null and get routed
+  // through the onboarding flow. Excluded from serialization — toPublic()
+  // exposes a derived `onboardingCompleted` boolean instead of this raw
+  // timestamp.
+  @Exclude()
+  @Column({ name: 'onboarding_completed_at', type: 'timestamptz', nullable: true })
+  onboardingCompletedAt: Date | null;
 
   // Excluded for the same reason as passwordHash: this entity is returned
   // directly (via nested `creator` relations on flashcard-sets endpoints,

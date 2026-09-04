@@ -55,6 +55,8 @@ describe('Authentication boundary (e2e)', () => {
     ['GET', '/progress/me'],
     ['GET', '/progress/summary'],
     ['GET', '/users/me'],
+    ['PATCH', '/users/me'],
+    ['PATCH', '/users/me/onboarding'],
   ];
 
   it.each(protectedRoutes)('%s %s rejects an unauthenticated caller with 401', async (method, path) => {

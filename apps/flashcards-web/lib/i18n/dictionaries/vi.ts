@@ -46,6 +46,9 @@ const vi = {
     register: "Đăng ký",
     profile: "Hồ sơ",
     copyright: "© {{year}} Flashcards. Học mọi thứ, từng thẻ một.",
+    legalNav: "Pháp lý",
+    privacy: "Quyền riêng tư",
+    terms: "Điều khoản",
   },
   auth: {
     login: {
@@ -435,6 +438,35 @@ const vi = {
     vietnamese: "Tiếng Việt",
     english: "English",
     label: "Ngôn ngữ",
+  },
+  onboarding: {
+    genderTitle: "Chọn giới tính",
+    genderSubtitle: "Chọn giới tính của bạn để cá nhân hóa trải nghiệm",
+    genderGroupLabel: "Giới tính",
+    male: "Nam",
+    female: "Nữ",
+    continue: "Tiếp tục",
+    saving: "Đang lưu...",
+    avatarTitle: "Chọn ảnh đại diện",
+    avatarSubtitle: "Bạn có thể chọn một ảnh hoặc bỏ qua bước này.",
+    avatarGroupLabel: "Ảnh đại diện",
+    avatarOptionLabel: "Ảnh đại diện {{index}}",
+    skip: "Bỏ qua",
+    finish: "Hoàn tất",
+  },
+  legal: {
+    privacyTitle: "Chính sách quyền riêng tư",
+    privacyBody: [
+      "Chúng tôi thu thập thông tin bạn cung cấp khi tạo tài khoản, như email và tên hiển thị, cùng với dữ liệu về các bộ thẻ và hoạt động học tập của bạn trên nền tảng.",
+      "Thông tin này chỉ được dùng để vận hành và cải thiện dịch vụ, ví dụ như lưu tiến độ học tập và cá nhân hóa trải nghiệm của bạn. Chúng tôi không bán dữ liệu của bạn cho bên thứ ba.",
+      "Bạn có thể cập nhật thông tin hồ sơ bất cứ lúc nào trong trang Hồ sơ, hoặc liên hệ với chúng tôi để yêu cầu xóa tài khoản và dữ liệu liên quan.",
+    ],
+    termsTitle: "Điều khoản sử dụng",
+    termsBody: [
+      "Bằng việc sử dụng nền tảng này, bạn đồng ý sử dụng dịch vụ một cách hợp pháp và tôn trọng quyền của những người học khác.",
+      "Bạn chịu trách nhiệm về nội dung các bộ thẻ mà bạn tạo và chia sẻ công khai. Chúng tôi có thể gỡ bỏ nội dung vi phạm pháp luật hoặc chính sách sử dụng.",
+      "Chúng tôi có thể cập nhật các điều khoản này theo thời gian. Việc tiếp tục sử dụng dịch vụ sau khi thay đổi đồng nghĩa với việc bạn chấp nhận các điều khoản mới.",
+    ],
   },
 };
 

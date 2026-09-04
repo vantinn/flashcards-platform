@@ -35,7 +35,12 @@ export async function Navbar({ user = null }: NavbarProps) {
       <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <MobileNav links={links} />
-          <Link href="/" className="text-lg font-bold text-primary">
+          {/* Signed in: the brand takes users to Explore (there's no
+              meaningful "home" for them beyond the app) rather than the
+              signed-out marketing landing page. Resolved server-side from
+              the same `user` prop as `links` above — no client auth check,
+              no hydration window where this could momentarily be wrong. */}
+          <Link href={user ? "/explore" : "/"} className="text-lg font-bold text-primary">
             {dict.nav.brand}
           </Link>
         </div>
