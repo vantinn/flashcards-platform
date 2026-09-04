@@ -22,6 +22,8 @@ import { StudyProgress } from './modules/progress/entities/study-progress.entity
 import { OtpVerification } from './modules/otp/entities/otp-verification.entity.js';
 import { LearningSession } from './modules/learning/entities/learning-session.entity.js';
 import { LearningCardState } from './modules/learning/entities/learning-card-state.entity.js';
+import { SetLike } from './modules/social/entities/set-like.entity.js';
+import { Comment } from './modules/social/entities/comment.entity.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { FlashcardSetsModule } from './modules/flashcard-sets/flashcard-sets.module.js';
@@ -30,6 +32,7 @@ import { StudyModule } from './modules/study/study.module.js';
 import { ProgressModule } from './modules/progress/progress.module.js';
 import { LearningModule } from './modules/learning/learning.module.js';
 import { SearchModule } from './modules/search/search.module.js';
+import { SocialModule } from './modules/social/social.module.js';
 
 @Module({
   imports: [
@@ -56,6 +59,8 @@ import { SearchModule } from './modules/search/search.module.js';
           OtpVerification,
           LearningSession,
           LearningCardState,
+          SetLike,
+          Comment,
         ],
         // Schema changes only ever happen through reviewed TypeORM
         // migrations (see src/database) — never via drift-prone auto-sync.
@@ -70,6 +75,7 @@ import { SearchModule } from './modules/search/search.module.js';
     ProgressModule,
     LearningModule,
     SearchModule,
+    SocialModule,
   ],
   controllers: [AppController],
   providers: [

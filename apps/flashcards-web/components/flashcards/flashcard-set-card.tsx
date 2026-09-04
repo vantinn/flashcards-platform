@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TagIcon } from "@/components/ui/icons";
+import { Avatar } from "@/components/ui/avatar";
+import { TagIcon, HeartIcon, MessageCircleIcon } from "@/components/ui/icons";
 import { setLanguageLabel } from "@/lib/set-language";
 import { setVisibilityLabel } from "@/lib/set-visibility";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -11,9 +12,11 @@ import type { FlashcardSet } from "@/types/flashcard";
 export interface FlashcardSetCardProps {
   set: FlashcardSet;
   showVisibility?: boolean;
+  /** Owner avatar/name + like/comment counts — only ever populated for public sets (Explore). */
+  showSocial?: boolean;
 }
 
-export async function FlashcardSetCard({ set, showVisibility = true }: FlashcardSetCardProps) {
+export async function FlashcardSetCard({ set, showVisibility = true, showSocial = false }: FlashcardSetCardProps) {
   const t = createTranslator(getDictionary(await getLocale()));
   const cardsLabel =
     set.cardCount === 1 ? t("sets.cardsCount_one", { count: set.cardCount }) : t("sets.cardsCount_other", { count: set.cardCount });
@@ -43,6 +46,25 @@ export async function FlashcardSetCard({ set, showVisibility = true }: Flashcard
             {cardsLabel}
             {studiedLabel}
           </p>
+
+          {showSocial && set.creator ? (
+            <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Avatar name={set.creator.displayName} avatarUrl={set.creator.avatarUrl} size="sm" />
+                <span className="truncate text-xs font-medium text-text-dark">{set.creator.displayName}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-3 text-xs text-text-muted">
+                <span className="flex items-center gap-1">
+                  <HeartIcon className="h-3.5 w-3.5" fill={set.likedByCurrentUser ? "currentColor" : "none"} />
+                  {set.likeCount ?? 0}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MessageCircleIcon className="h-3.5 w-3.5" />
+                  {set.commentCount ?? 0}
+                </span>
+              </div>
+            </div>
+          ) : null}
         </CardBody>
       </Card>
     </Link>

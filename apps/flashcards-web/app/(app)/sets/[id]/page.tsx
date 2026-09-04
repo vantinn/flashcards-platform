@@ -5,17 +5,39 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Avatar } from "@/components/ui/avatar";
 import { ZapIcon, BrainIcon } from "@/components/ui/icons";
 import { SetActions } from "@/components/flashcards/set-actions";
 import { ModeProgressCard } from "@/components/learning/mode-progress-card";
+import { LikeButton } from "@/components/social/like-button";
+import { CommentSection } from "@/components/social/comment-section";
 import { serverApi, ApiError } from "@/lib/api-server";
 import { getCurrentUser } from "@/lib/current-user";
 import { setLanguageLabel } from "@/lib/set-language";
 import { setVisibilityLabel } from "@/lib/set-visibility";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, createTranslator } from "@/lib/i18n/dictionary";
-import type { FlashcardSetDetail } from "@/types/flashcard";
+import type { FlashcardSetDetail, SocialSummary, SetComment } from "@/types/flashcard";
 import type { LearningSessionSummary } from "@/types/learning";
+import type { PaginatedResult } from "@/types/pagination";
+
+const COMMENTS_PAGE_SIZE = 20;
+
+/** Social data is a non-critical enhancement (same philosophy as learningSessions below) — a hiccup here shouldn't break viewing/studying the set. */
+async function loadSocial(setId: string): Promise<{ social: SocialSummary; comments: PaginatedResult<SetComment> }> {
+  try {
+    const [social, comments] = await Promise.all([
+      serverApi.get<SocialSummary>(`/flashcard-sets/${setId}/social`),
+      serverApi.get<PaginatedResult<SetComment>>(`/flashcard-sets/${setId}/comments?limit=${COMMENTS_PAGE_SIZE}`),
+    ]);
+    return { social, comments };
+  } catch {
+    return {
+      social: { likeCount: 0, commentCount: 0, likedByCurrentUser: false },
+      comments: { items: [], total: 0, page: 1, limit: COMMENTS_PAGE_SIZE },
+    };
+  }
+}
 
 async function loadSet(id: string) {
   try {
@@ -46,6 +68,8 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
   const [set, currentUser, locale] = await Promise.all([loadSet(id), getCurrentUser(), getLocale()]);
   const t = createTranslator(getDictionary(locale));
   const isOwner = currentUser?.id === set.creator.id;
+  const isPublic = set.visibility === "public";
+  const { social, comments } = isPublic ? await loadSocial(set.id) : { social: null, comments: null };
 
   let learningSessions: LearningSessionSummary[] = [];
   if (currentUser) {
@@ -142,6 +166,27 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
           ))}
         </div>
       )}
+
+      {isPublic && social && comments ? (
+        <Card>
+          <CardBody className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Avatar name={set.creator.displayName} avatarUrl={set.creator.avatarUrl} size="lg" />
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{t("social.ownerLabel")}</p>
+                  <p className="font-semibold text-text-dark">{set.creator.displayName}</p>
+                </div>
+              </div>
+              <LikeButton setId={set.id} initialLiked={social.likedByCurrentUser} initialLikeCount={social.likeCount} />
+            </div>
+
+            <div className="border-t border-border pt-6">
+              <CommentSection setId={set.id} initialComments={comments} />
+            </div>
+          </CardBody>
+        </Card>
+      ) : null}
     </PageContainer>
   );
 }

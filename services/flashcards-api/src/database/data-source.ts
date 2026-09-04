@@ -8,6 +8,8 @@ import { StudyProgress } from '../modules/progress/entities/study-progress.entit
 import { OtpVerification } from '../modules/otp/entities/otp-verification.entity.js';
 import { LearningSession } from '../modules/learning/entities/learning-session.entity.js';
 import { LearningCardState } from '../modules/learning/entities/learning-card-state.entity.js';
+import { SetLike } from '../modules/social/entities/set-like.entity.js';
+import { Comment } from '../modules/social/entities/comment.entity.js';
 
 /**
  * Standalone DataSource used only by the TypeORM CLI (migration:generate /
@@ -30,6 +32,8 @@ const AppDataSource = new DataSource({
     OtpVerification,
     LearningSession,
     LearningCardState,
+    SetLike,
+    Comment,
   ],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,

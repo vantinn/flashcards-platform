@@ -22,6 +22,15 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // Excluded from automatic entity serialization for the same reason as
+  // passwordHash/googleId below: this entity is returned directly (nested
+  // as `creator` on flashcard-sets endpoints, some of which are visible to
+  // any signed-in user — e.g. Explore, a public set's detail page) rather
+  // than always going through UsersService.toPublic() first. `/users/me`,
+  // login, register, etc. are unaffected — they all build their response
+  // from toPublic()'s plain object, which explicitly includes email and
+  // isn't subject to this class-level annotation.
+  @Exclude()
   @Column({ type: 'varchar', unique: true })
   email: string;
 

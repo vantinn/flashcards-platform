@@ -57,6 +57,15 @@ describe('Authentication boundary (e2e)', () => {
     ['GET', '/users/me'],
     ['PATCH', '/users/me'],
     ['PATCH', '/users/me/onboarding'],
+    ['POST', `/flashcard-sets/${randomId}/likes`],
+    ['DELETE', `/flashcard-sets/${randomId}/likes`],
+    ['GET', `/flashcard-sets/${randomId}/comments`],
+    ['POST', `/flashcard-sets/${randomId}/comments`],
+    ['GET', `/flashcard-sets/${randomId}/comments/${randomId}/replies`],
+    ['POST', `/flashcard-sets/${randomId}/comments/${randomId}/replies`],
+    ['PATCH', `/comments/${randomId}`],
+    ['DELETE', `/comments/${randomId}`],
+    ['GET', `/flashcard-sets/${randomId}/social`],
   ];
 
   it.each(protectedRoutes)('%s %s rejects an unauthenticated caller with 401', async (method, path) => {

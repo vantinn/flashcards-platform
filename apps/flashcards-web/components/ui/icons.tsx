@@ -167,3 +167,21 @@ export function UserIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+// Pass fill="currentColor" (overrides IconBase's default fill="none" via
+// prop spread order) for the liked/filled state — see LikeButton.
+export function HeartIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 20.3c-.3 0-.6-.1-.8-.3C7.3 16.8 4 13.6 4 9.9 4 7.2 6.1 5 8.8 5c1.4 0 2.6.6 3.2 1.6C12.6 5.6 13.8 5 15.2 5 17.9 5 20 7.2 20 9.9c0 3.7-3.3 6.9-7.2 10.1-.2.2-.5.3-.8.3Z" />
+    </IconBase>
+  );
+}
+
+export function MessageCircleIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.1 0-2.2-.2-3.1-.6L4.5 20.5l1-3.9C4.5 15.4 4 13.7 4 12Z" />
+    </IconBase>
+  );
+}

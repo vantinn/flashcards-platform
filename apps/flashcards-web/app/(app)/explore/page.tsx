@@ -92,7 +92,7 @@ export default async function ExplorePage({
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {result.items.map((set) => (
-              <FlashcardSetCard key={set.id} set={set} showVisibility={false} />
+              <FlashcardSetCard key={set.id} set={set} showVisibility={false} showSocial />
             ))}
           </div>
 
