@@ -19,21 +19,6 @@ async function bootstrap() {
   // paste from being rejected before it ever reaches them.
   app.useBodyParser('json', { limit: '2mb' });
 
-  // Railway (like Vercel/Heroku) terminates TLS at an edge proxy and
-  // forwards to this container over its private network, so
-  // req.socket.remoteAddress is the *proxy's* address — identical for every
-  // visitor. Without this, RateLimitGuard buckets the entire internet into
-  // one counter: ~10 logins per minute platform-wide, and no per-attacker
-  // limiting at all.
-  //
-  // The hop count is deliberately 1, not `true`. Express walks
-  // X-Forwarded-For right-to-left and trusts `n` hops; the edge proxy
-  // appends the real client IP as the rightmost entry, so 1 lands on a value
-  // the proxy wrote. Trusting `true` would take the *leftmost* entry, which
-  // is whatever the client sent — letting anyone rotate a header to bypass
-  // the auth rate limits entirely.
-  app.set('trust proxy', 1);
-
   // Sets the standard hardening headers (X-Content-Type-Options,
   // X-Frame-Options, a conservative CSP, etc.) that a JSON-only API has no
   // other reason to set itself. contentSecurityPolicy is left at helmet's

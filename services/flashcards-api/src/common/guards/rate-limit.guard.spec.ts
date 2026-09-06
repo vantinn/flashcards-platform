@@ -3,14 +3,24 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { RateLimitGuard, rateLimit } from './rate-limit.guard.js';
 
 /**
- * The guard buckets on `req.ip`, which is only the real client address
- * because main.ts sets `trust proxy` — behind Railway's edge,
- * req.socket.remoteAddress is the proxy's and identical for every visitor.
- * These tests exercise the bucketing contract that depends on.
+ * Shaped like a real Railway request: the TCP peer is Railway's internal
+ * proxy (a private 100.64/10 address) and the client address arrives in
+ * X-Real-IP. `proxyHop` varies per call to model the detail that broke the
+ * limiter in production — the internal hop is not stable, so anything
+ * bucketing on it counts every request separately. See client-ip.ts.
  */
+let proxyHop = 0;
 function contextFor(ip: string, path = '/auth/login'): ExecutionContext {
+  proxyHop += 1;
   return {
-    switchToHttp: () => ({ getRequest: () => ({ ip, path, route: { path } }) }),
+    switchToHttp: () => ({
+      getRequest: () => ({
+        socket: { remoteAddress: `100.64.0.${proxyHop % 250}` },
+        headers: { 'x-real-ip': ip, 'x-forwarded-for': `${ip}, 100.64.0.${proxyHop % 250}` },
+        path,
+        route: { path },
+      }),
+    }),
   } as unknown as ExecutionContext;
 }
 
@@ -43,6 +53,35 @@ describe('RateLimitGuard', () => {
 
     // A different client is untouched by the first one's exhausted bucket.
     expect(guard.canActivate(contextFor('5.6.7.8'))).toBe(true);
+  });
+
+  // The production regression this guards against: rotating a forwarding
+  // header must not mint fresh buckets. The proxy-written X-Real-IP is what
+  // decides the bucket, so a client rotating X-Forwarded-For gets nowhere.
+  it('cannot be bypassed by rotating X-Forwarded-For behind the proxy', () => {
+    const guard = rateLimit({ limit: 3, windowMs: 60_000 });
+
+    function spoofing(attempt: number): ExecutionContext {
+      return {
+        switchToHttp: () => ({
+          getRequest: () => ({
+            socket: { remoteAddress: '100.64.0.7' },
+            headers: {
+              'x-real-ip': '203.0.113.7',
+              'x-forwarded-for': `198.51.100.${attempt}, 203.0.113.7, 100.64.0.7`,
+            },
+            path: '/auth/login',
+            route: { path: '/auth/login' },
+          }),
+        }),
+      } as unknown as ExecutionContext;
+    }
+
+    for (let i = 0; i < 3; i += 1) {
+      expect(guard.canActivate(spoofing(i))).toBe(true);
+    }
+
+    expect(() => guard.canActivate(spoofing(99))).toThrow(HttpException);
   });
 
   it('counts each route separately', () => {

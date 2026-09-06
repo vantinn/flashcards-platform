@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
+import { resolveClientIp } from '../client-ip.js';
 
 interface RateLimitOptions {
   /** Requests allowed per window, per client IP, per route this guard is applied to. */
@@ -54,10 +55,11 @@ export class RateLimitGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
-    // req.ip, not req.socket.remoteAddress: main.ts sets `trust proxy` so
-    // this is the real client address behind Railway's edge rather than the
-    // proxy's — without that every visitor would share one bucket.
-    const key = `${request.route?.path ?? request.path}:${request.ip}`;
+    // resolveClientIp, not req.ip: Express's `trust proxy` hop counting is
+    // unreliable on Railway, where the rightmost X-Forwarded-For entry is an
+    // internal proxy address that changes per request — which hands every
+    // request its own bucket and disables the limiter. See client-ip.ts.
+    const key = `${request.route?.path ?? request.path}:${resolveClientIp(request)}`;
     const now = Date.now();
     const windowStart = now - this.options.windowMs;
 
