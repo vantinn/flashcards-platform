@@ -58,6 +58,11 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
+  // Railway sends SIGTERM on every redeploy. Without this, Nest never runs
+  // OnModuleDestroy, so the Redis client and the Postgres pool are torn down
+  // by process exit rather than closed cleanly — see CacheService.onModuleDestroy.
+  app.enableShutdownHooks();
+
   const port = configService.get<number>('app.port') ?? 3001;
   await app.listen(port);
 }

@@ -150,6 +150,59 @@ describe('FlashcardSetsService', () => {
       expect(cache.deleteByPrefix).toHaveBeenCalledWith('search:');
     });
 
+    // The security-critical invalidation: a set the owner just hid must stop
+    // being discoverable through Explore, not linger in a cached page.
+    it('invalidates the search cache when a public set is made private', async () => {
+      repo.findOne.mockResolvedValue(buildSet({ visibility: SetVisibility.PUBLIC }));
+
+      await service.update('set-1', 'owner-1', { visibility: SetVisibility.PRIVATE });
+
+      expect(cache.deleteByPrefix).toHaveBeenCalledWith('search:');
+    });
+
+    // Ordering matters: invalidating before the write would let a concurrent
+    // read repopulate the cache from the pre-update row.
+    it('invalidates only after PostgreSQL has accepted the write', async () => {
+      repo.findOne.mockResolvedValue(buildSet({ visibility: SetVisibility.PUBLIC }));
+      const order: string[] = [];
+      repo.save.mockImplementation(async (entity: unknown) => {
+        order.push('save');
+        return entity;
+      });
+      cache.deleteByPrefix.mockImplementation(async () => {
+        order.push('invalidate');
+      });
+
+      await service.update('set-1', 'owner-1', { visibility: SetVisibility.PRIVATE });
+
+      expect(order).toEqual(['save', 'invalidate']);
+    });
+
+    // The write has already committed by the time invalidation runs, so a
+    // Redis failure here must not turn a successful mutation into a 500.
+    it('returns the committed result even when cache invalidation fails', async () => {
+      repo.findOne.mockResolvedValue(buildSet());
+      cache.deleteByPrefix.mockRejectedValue(new Error('Redis unavailable'));
+
+      await expect(service.update('set-1', 'owner-1', { title: 'Renamed' })).resolves.toMatchObject({
+        title: 'Renamed',
+      });
+    });
+
+    it('returns the created set even when cache invalidation fails', async () => {
+      cache.deleteByPrefix.mockRejectedValue(new Error('Redis unavailable'));
+
+      await expect(service.create('owner-1', { title: 'New Set' })).resolves.toBeDefined();
+    });
+
+    it('completes a delete even when cache invalidation fails', async () => {
+      repo.findOne.mockResolvedValue(buildSet());
+      cache.deleteByPrefix.mockRejectedValue(new Error('Redis unavailable'));
+
+      await expect(service.remove('set-1', 'owner-1')).resolves.toBeUndefined();
+      expect(repo.remove).toHaveBeenCalled();
+    });
+
     it('changes language on an existing set', async () => {
       repo.findOne.mockResolvedValue(buildSet({ language: SetLanguage.FREE }));
       const result = await service.update('set-1', 'owner-1', { language: SetLanguage.CHINESE });

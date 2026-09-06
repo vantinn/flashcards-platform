@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
@@ -14,7 +15,48 @@ import { CommentsService } from '../social/comments.service.js';
 // what a cache-aside TTL earns its keep on; nothing else in this API fits
 // that shape as cleanly, so nothing else is cached.
 const SEARCH_CACHE_PREFIX = 'search:';
+
+// Bumped whenever CachedSetSummary's shape changes. Without it, the first
+// pod running new code would read values written by the old one and hand
+// back a payload missing whatever field was just added — for the full TTL,
+// on every deploy. Old-version keys are never read again and expire on
+// their own.
+const SEARCH_CACHE_VERSION = 'v1';
+
+// 60s: Explore is read-constantly and written rarely, and the fields it can
+// filter on (title/category/visibility) are invalidated explicitly on
+// mutation anyway — so this TTL isn't the correctness mechanism, it's the
+// bound on the fields that *aren't* explicitly invalidated (cardCount,
+// likeCount, commentCount, studyCount, creator display name). A minute of
+// staleness on a like count is invisible to users; an hour would not be.
 const SEARCH_CACHE_TTL_SECONDS = 60;
+
+/**
+ * `q` is unbounded free text and every other dimension is a validated enum
+ * or a bounded integer, so `q` is the only part that can't go into a key
+ * verbatim. Two reasons it's hashed rather than interpolated:
+ *
+ *  - Key size. A search term is capped at 200 chars by the DTO, but a raw
+ *    200-char key repeated across every page/category combination is pure
+ *    waste in a memory-backed store.
+ *  - Delimiter safety. A term containing ':' would otherwise shift the
+ *    remaining segments and could, in principle, alias a different query's
+ *    key — one user's results served for another's search.
+ *
+ * The remaining segments stay human-readable so the keyspace is still
+ * greppable in redis-cli. No user identity is ever part of the key: this
+ * cache is shared across all viewers by design, which is only safe because
+ * the value stored is identical for every viewer (see CachedSetSummary).
+ */
+function buildSearchCacheKey(query: SearchSetsDto): string {
+  const { page, limit, q, category } = query;
+  // Hashed verbatim, not normalized: loadAndCache filters on this exact
+  // string, so any trimming/casing done here and not there would let two
+  // different database queries share one key.
+  const term = q ?? '';
+  const termHash = term === '' ? 'all' : createHash('sha256').update(term).digest('hex').slice(0, 16);
+  return `${SEARCH_CACHE_PREFIX}${SEARCH_CACHE_VERSION}:${category ?? 'any'}:${page}:${limit}:${termHash}`;
+}
 
 interface OwnerSummary {
   id: string;
@@ -45,8 +87,7 @@ export class SearchService {
   ) {}
 
   async searchPublicSets(query: SearchSetsDto, currentUserId: string): Promise<PaginatedResult<PublicSetSummary>> {
-    const { page, limit, q, category } = query;
-    const cacheKey = `${SEARCH_CACHE_PREFIX}${q ?? ''}:${category ?? ''}:${page}:${limit}`;
+    const cacheKey = buildSearchCacheKey(query);
 
     const cached = await this.cache.getJson<PaginatedResult<CachedSetSummary>>(cacheKey);
     const base = cached ?? (await this.loadAndCache(query, cacheKey));

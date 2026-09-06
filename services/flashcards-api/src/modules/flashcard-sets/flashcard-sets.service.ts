@@ -145,7 +145,14 @@ export class FlashcardSetsService {
    * no longer exists, is not.
    */
   private invalidateSearchCache(): Promise<void> {
-    return this.cache.deleteByPrefix('search:');
+    // The .catch() is defence in depth, not redundancy. Every caller reaches
+    // here *after* PostgreSQL has committed, so a rejection propagating out
+    // of this would turn a successful mutation into a 500 — the client
+    // retries a write that already happened, over a cache that isn't the
+    // source of truth for anything. CacheService already swallows its own
+    // errors; this makes the guarantee hold even if that ever changes.
+    // The cost of losing an invalidation is bounded by the entry's TTL.
+    return this.cache.deleteByPrefix('search:').catch(() => undefined);
   }
 
   /**

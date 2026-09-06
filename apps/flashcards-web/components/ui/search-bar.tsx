@@ -12,9 +12,19 @@ export interface SearchBarProps {
   onChange?: (value: string) => void;
   placeholder: string;
   className?: string;
+  /** Caps what the user can type, where the backing endpoint bounds term length. */
+  maxLength?: number;
 }
 
-export function SearchBar({ name = "q", defaultValue, value, onChange, placeholder, className }: SearchBarProps) {
+export function SearchBar({
+  name = "q",
+  defaultValue,
+  value,
+  onChange,
+  placeholder,
+  className,
+  maxLength,
+}: SearchBarProps) {
   const isControlled = value !== undefined;
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -27,6 +37,7 @@ export function SearchBar({ name = "q", defaultValue, value, onChange, placehold
       aria-label={placeholder}
       placeholder={placeholder}
       className={className}
+      maxLength={maxLength}
       {...(isControlled ? { value, onChange: handleChange } : { name, defaultValue })}
     />
   );
