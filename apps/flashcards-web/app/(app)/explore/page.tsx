@@ -16,7 +16,20 @@ import type { PaginatedResult } from "@/types/pagination";
 
 const PAGE_SIZE = 12;
 
+/**
+ * Mirrors the API's `q` cap (SearchSetsDto), which exists to bound Redis
+ * cache-key cardinality. A term longer than the longest possible set title
+ * cannot match anything, so this short-circuits to an empty result rather
+ * than sending a request the API would reject with 400 — which would
+ * otherwise surface here as a crashed page instead of "no results".
+ */
+const MAX_SEARCH_TERM_LENGTH = 200;
+
 async function searchPublicSets(params: { q: string; category: string; page: number }) {
+  if (params.q.length > MAX_SEARCH_TERM_LENGTH) {
+    return { items: [], total: 0, page: params.page, limit: PAGE_SIZE };
+  }
+
   const query = new URLSearchParams({
     q: params.q,
     page: String(params.page),
@@ -71,7 +84,12 @@ export default async function ExplorePage({
       </div>
 
       <form action="/explore" className="flex flex-wrap gap-2">
-        <SearchBar defaultValue={q} placeholder={t("explore.searchPlaceholder")} className="max-w-sm" />
+        <SearchBar
+          defaultValue={q}
+          maxLength={MAX_SEARCH_TERM_LENGTH}
+          placeholder={t("explore.searchPlaceholder")}
+          className="max-w-sm"
+        />
         <Select name="category" defaultValue={category} className="max-w-[180px]">
           <option value="">{t("category.allCategories")}</option>
           {SET_LANGUAGES.map((value) => (

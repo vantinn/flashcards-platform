@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -8,6 +9,11 @@ import { LikesService } from '../social/likes.service.js';
 import { CommentsService } from '../social/comments.service.js';
 
 const CURRENT_USER_ID = 'viewer-1';
+
+/** Mirrors SearchService's key builder — asserted against, never imported, so a silent change to either is caught. */
+function termHash(term: string): string {
+  return createHash('sha256').update(term).digest('hex').slice(0, 16);
+}
 
 function buildSetRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -56,7 +62,9 @@ describe('SearchService', () => {
     expect(result.items).toEqual([
       expect.objectContaining({ id: 'set-1', likeCount: 0, commentCount: 0, likedByCurrentUser: false }),
     ]);
-    expect(cache.setJson).toHaveBeenCalledWith(expect.stringContaining('search:spanish'), expect.anything(), 60);
+    const [key, , ttl] = cache.setJson.mock.calls[0];
+    expect(key).toBe(`search:v1:any:1:20:${termHash('spanish')}`);
+    expect(ttl).toBe(60);
   });
 
   it('never caches the owner\'s email — only the safe id/displayName/avatarUrl projection', async () => {
@@ -97,13 +105,106 @@ describe('SearchService', () => {
     expect(result.items[0].likedByCurrentUser).toBe(true);
   });
 
-  it('keys the cache separately per query/category/page so different searches never collide', async () => {
-    await service.searchPublicSets({ page: 1, limit: 20, q: 'a', category: undefined }, CURRENT_USER_ID);
-    await service.searchPublicSets({ page: 2, limit: 20, q: 'a', category: undefined }, CURRENT_USER_ID);
+  it('keys the cache separately per query/category/page/limit so different searches never collide', async () => {
+    const variants = [
+      { page: 1, limit: 20, q: 'a', category: undefined },
+      { page: 2, limit: 20, q: 'a', category: undefined },
+      { page: 1, limit: 50, q: 'a', category: undefined },
+      { page: 1, limit: 20, q: 'b', category: undefined },
+      { page: 1, limit: 20, q: 'a', category: SetLanguage.ENGLISH },
+      { page: 1, limit: 20, q: 'a', category: SetLanguage.CHINESE },
+      { page: 1, limit: 20, q: undefined, category: undefined },
+    ];
 
-    const [keyPage1] = cache.setJson.mock.calls[0];
-    const [keyPage2] = cache.setJson.mock.calls[1];
-    expect(keyPage1).not.toBe(keyPage2);
+    for (const variant of variants) {
+      await service.searchPublicSets(variant, CURRENT_USER_ID);
+    }
+
+    const keys = cache.setJson.mock.calls.map((call: unknown[]) => call[0] as string);
+    expect(new Set(keys).size).toBe(variants.length);
+  });
+
+  // A term containing the key delimiter must not be able to shift the
+  // remaining segments and alias another query's cache entry — the reason
+  // the free-text part is hashed rather than interpolated.
+  it('cannot be made to collide by embedding the key delimiter in the search term', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'english', category: undefined }, CURRENT_USER_ID);
+    await service.searchPublicSets({ page: 1, limit: 20, q: '', category: SetLanguage.ENGLISH }, CURRENT_USER_ID);
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'x:english:1:20', category: undefined }, CURRENT_USER_ID);
+
+    const keys = cache.setJson.mock.calls.map((call: unknown[]) => call[0] as string);
+    expect(new Set(keys).size).toBe(3);
+  });
+
+  it('bounds key length regardless of how long the search term is', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'x'.repeat(200), category: undefined }, CURRENT_USER_ID);
+
+    const [key] = cache.setJson.mock.calls[0];
+    expect(key.length).toBeLessThan(64);
+  });
+
+  it('versions the key so a payload-shape change cannot read back an older deploy\'s value', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'a', category: undefined }, CURRENT_USER_ID);
+
+    const [key] = cache.setJson.mock.calls[0];
+    expect(key.startsWith('search:v1:')).toBe(true);
+  });
+
+  // The cache is shared across every viewer, which is only safe because the
+  // stored value is viewer-independent. If a user id ever appears in the key
+  // that invariant has been broken in one direction; if viewer-specific data
+  // ever appears in the value, in the other.
+  it('never puts viewer identity in the cache key', async () => {
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'a', category: undefined }, CURRENT_USER_ID);
+
+    const [key] = cache.setJson.mock.calls[0];
+    expect(key).not.toContain(CURRENT_USER_ID);
+  });
+
+  it('never puts viewer-specific state in the cached value', async () => {
+    likesService.likedByUserForSets.mockResolvedValue(new Set(['set-1']));
+
+    await service.searchPublicSets({ page: 1, limit: 20, q: 'a', category: undefined }, CURRENT_USER_ID);
+
+    const [, cachedPayload] = cache.setJson.mock.calls[0];
+    expect(cachedPayload.items[0]).not.toHaveProperty('likedByCurrentUser');
+  });
+
+  // User A must never see User B's like state through the shared entry.
+  it('serves one cached entry to two viewers with each viewer\'s own like state', async () => {
+    const cached = {
+      items: [{ id: 'set-1', creator: { id: 'o', displayName: 'O', avatarUrl: null }, likeCount: 1, commentCount: 0 }],
+      total: 1,
+      page: 1,
+      limit: 20,
+    };
+    cache.getJson.mockResolvedValue(cached);
+
+    likesService.likedByUserForSets.mockResolvedValueOnce(new Set(['set-1']));
+    const viewerA = await service.searchPublicSets({ page: 1, limit: 20, q: 'a', category: undefined }, 'user-a');
+
+    likesService.likedByUserForSets.mockResolvedValueOnce(new Set());
+    const viewerB = await service.searchPublicSets({ page: 1, limit: 20, q: 'a', category: undefined }, 'user-b');
+
+    expect(viewerA.items[0].likedByCurrentUser).toBe(true);
+    expect(viewerB.items[0].likedByCurrentUser).toBe(false);
+  });
+
+  // A Redis outage surfaces here as a permanent miss — CacheService absorbs
+  // the error and returns null (see cache.service.spec.ts). Explore must
+  // stay fully functional in that state, just uncached.
+  it('serves complete results from PostgreSQL when Redis is unavailable', async () => {
+    cache.getJson.mockResolvedValue(null);
+
+    const result = await service.searchPublicSets(
+      { page: 1, limit: 20, q: 'a', category: undefined },
+      CURRENT_USER_ID,
+    );
+
+    expect(repo.findAndCount).toHaveBeenCalledTimes(1);
+    expect(result.items).toEqual([
+      expect.objectContaining({ id: 'set-1', likeCount: 0, commentCount: 0, likedByCurrentUser: false }),
+    ]);
   });
 
   it('only ever queries for PUBLIC sets, regardless of the search term or category — private/unlisted sets must never be discoverable here', async () => {

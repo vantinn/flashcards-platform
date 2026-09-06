@@ -38,3 +38,23 @@ describe('SearchSetsDto — category', () => {
     expect(errors.some((e) => e.property === 'category')).toBe(true);
   });
 });
+
+// The cap is what bounds Redis key cardinality and key size — every distinct
+// term becomes its own cache entry, so an unbounded field here is an
+// unbounded keyspace there. See SearchSetsDto.q.
+describe('SearchSetsDto — q length cap', () => {
+  it('accepts a term as long as the longest possible set title', async () => {
+    const errors = await validateDto({ q: 'x'.repeat(200) });
+    expect(errors).toHaveLength(0);
+  });
+
+  it('rejects a term longer than any title could match', async () => {
+    const errors = await validateDto({ q: 'x'.repeat(201) });
+    expect(errors.some((e) => e.property === 'q')).toBe(true);
+  });
+
+  it('still accepts an absent or empty term', async () => {
+    expect(await validateDto({})).toHaveLength(0);
+    expect(await validateDto({ q: '' })).toHaveLength(0);
+  });
+});
